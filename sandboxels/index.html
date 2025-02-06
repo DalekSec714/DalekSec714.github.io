@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 
-
-<!-- Mirrored from sandboxels.r74n.com/ by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 27 Dec 2024 21:08:59 GMT -->
-<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=utf-8" /><!-- /Added by HTTrack -->
 <head>
     <meta charset="utf-8">
     <title>Sandboxels - Experiment with Pixels</title>
@@ -16,15 +13,15 @@
     <meta name="contact" content="contact@R74n.com">
 
     <!--Favicons-->
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon5e1f.png?v=2">
-    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x325e1f.png?v=2">
-    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x165e1f.png?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png?v=2">
     <link rel="manifest" href="manifest.json">
-    <link rel="mask-icon" href="icons/safari-pinned-tab5e1f.svg?v=2" color="#2167ff">
-    <link rel="shortcut icon" href="icons/favicon5e1f.ico?v=2">
-    <link rel="help" href="help.html">
-    <link rel="search" href="https://r74n.com/search/#gsc.tab=0">
-    <link rel="license" href="license.txt">
+    <link rel="mask-icon" href="icons/safari-pinned-tab.svg?v=2" color="#2167ff">
+    <link rel="shortcut icon" href="icons/favicon.ico?v=2">
+    <link rel="help" href="https://sandboxels.R74n.com/help">
+    <link rel="search" href="https://R74n.com/search/#gsc.tab=0">
+    <link rel="license" href="https://sandboxels.R74n.com/license.txt">
     <meta name="msapplication-TileColor" content="#e6d577">
     <meta name="theme-color" content="#000000">
 
@@ -33,9 +30,9 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="Sandboxels - Experiment with Pixels">
     <meta property="og:description" content="Relax or experiment with over 500 materials in this falling sand simulator.">
-    <meta property="og:url" content="index.html">
+    <meta property="og:url" content="https://sandboxels.r74n.com">
     <meta property="og:site_name" content="Sandboxels">
-    <meta property="og:image" content="icons/wallpaper.png">
+    <meta property="og:image" content="https://sandboxels.r74n.com/icons/wallpaper.png">
     <meta property="og:image:width" content="1980">
     <meta property="og:image:height" content="971">
     <meta property="og:image:type" content="image/png">
@@ -46,7 +43,7 @@
     <meta name="twitter:description" content="Relax or experiment with over 500 materials in this falling sand simulator.">
     <meta name="twitter:title" content="Sandboxels - Experiment with Pixels">
     <meta name="twitter:site:id" content="1436857621827530753">
-    <meta name="twitter:image" content="icons/card.png">
+    <meta name="twitter:image" content="https://sandboxels.r74n.com/icons/card.png">
     <meta name="twitter:image:alt" content="A rainforest made in Sandboxels">
     <meta name="twitter:creator:id" content="1436857621827530753">
 
@@ -109,7 +106,7 @@
         if (typeof navigator !== 'undefined') {
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('service-worker.js');
+                    navigator.serviceWorker.register('/service-worker.js');
                 });
             }
         }
@@ -117,7 +114,7 @@
 
     <script>
         console.log("%c WELCOME TO R74n ","position: absolute; top: 50%; right: 50%; transform: translate(50%,-50%); font-family: Arial; font-size: 3em; font-weight: 700; color: #00ffff; text-shadow: 1px 1px 1px #14c9c9, 1px 2px 1px #14c9c9, 1px 3px 1px #14c9c9, 1px 4px 1px #14c9c9, 1px 5px 1px #14c9c9, 1px 13px 6px rgba(16,16,16,0.4), 1px 22px 10px rgba(16,16,16,0.2), 1px 25px 35px rgba(16,16,16,0.2), 1px 30px 60px rgba(16,16,16,0.4);padding:10px");
-        console.log("Sandboxels%20is%20developed%20by%20R74n%20and%20can%20be%20played%20on%20the%20official%20website_%20https_/sandboxels.R74n.com/index.html");
+        console.log("Sandboxels is developed by R74n and can be played on the official website: https://sandboxels.R74n.com/");
         console.log("Can't access? Join our Discord: https://link.R74n.com/discord");
         console.log("Found this on another website? Let us know!");
         console.log("©2021-" + new Date().getFullYear() + ". All Rights Reserved. https://sandboxels.R74n.com/license.txt");
@@ -706,9 +703,13 @@ SEEDRISE: function(pixel) {
                 if (!pixel.charge && !pixel.chargeCD) {
                     alpha -= 0.75;
                     alpha = Math.max(0,alpha);
+                    if (pixel.emit) pixel.emit = false;
                     if (alpha === 0) return;
                 }
-                else { alpha = 1 }
+                else {
+                    alpha = 1;
+                    if (!pixel.emit) pixel.emit = true;
+                }
                 drawSquare(ctx,pixel.color,pixel.x,pixel.y,undefined,alpha);
             }
         }
@@ -12741,7 +12742,7 @@ else if (settings.lang && settings.lang !== "en") {
 if (langCode) {
     try {
         var Httpreq = new XMLHttpRequest();
-        Httpreq.open("GET.html","https://sandboxels.r74n.com/lang/"+langCode+".json",false);
+        Httpreq.open("GET","https://sandboxels.r74n.com/lang/"+langCode+".json",false);
         Httpreq.send(null);
         lang = JSON.parse(Httpreq.responseText);
         if (lang["#lang.font"]) {
@@ -13022,6 +13023,9 @@ if (langCode) {
             }
             if (pixel.alpha !== undefined) {
                 delete pixel.alpha;
+            }
+            if (pixel.emit) {
+                delete pixel.emit;
             }
             if (elements[element].alpha !== undefined) {
                 pixel.alpha = elements[element].alpha;
@@ -16531,25 +16535,25 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
         }
         function addMod(url,noMessage) {
             // remove trailing slashes
-            while (url.charAt(url.length-1) == "index.html") { url = url.substring(0, url.length-1); }
+            while (url.charAt(url.length-1) == "/") { url = url.substring(0, url.length-1); }
             url = url.replaceAll(/['‘’“”"\$\{\}\\]/g,"");
             // if the mod is in enabledMods, return
             for (var i = 0; i < enabledMods.length; i++) {
                 if (enabledMods[i] == url) { return; }
             }
             // if the url doesn't have a slash or a dot, alert
-            if (url.indexOf("index.html") == -1 && url.indexOf(".") == -1) {
+            if (url.indexOf("/") == -1 && url.indexOf(".") == -1) {
                 alert("Invalid mod URL.");
                 return;
             }
             // if the url doesn't start with http, add "mods/" to the beginning
-            if (url.indexOf("http") == -1 && url.indexOf("mods/index.html") == -1) { url = "mods/"+url; }
+            if (url.indexOf("http") == -1 && url.indexOf("mods/") == -1) { url = "mods/"+url; }
             // add it to enabledMods and set the localStorage
             enabledMods.push(url);
             localStorage.setItem("enabledMods", JSON.stringify(enabledMods));
             // add to modManagerList
             var modManagerList = document.getElementById("modManagerList");
-            var modName = url.split("index.html").pop();
+            var modName = url.split("/").pop();
             modManagerList.innerHTML += `<li><a href="${url.replaceAll('"','')}" target="_blank">${modName}</a> <span class="removeModX" onclick='removeMod("${url.replaceAll('"','\\\"')}")'>X</span></li>`
             document.getElementById("noMods").style.display = "none";
             if (!noMessage) { alert("Added mod. Refresh the page to see changes."); }
@@ -17436,7 +17440,7 @@ window.onload = function() {
             if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) { return; }
             var file = e.dataTransfer.files[0];
             // for img file(s), read the file & draw to canvas
-            if (file.type.indexOf('image/index.html') !== -1) {
+            if (file.type.indexOf('image/') !== -1) {
                 var img = document.createElement("img");
                 img.classList.add("obj");
                 img.file = file;
@@ -17473,7 +17477,7 @@ window.onload = function() {
             }
             if (!items) { return; }
             var item = items[items.length-1];
-            if (item.type.indexOf('image/index.html') !== -1) {
+            if (item.type.indexOf('image/') !== -1) {
                 var blob = item.getAsFile();
                 var URLObj = window.URL || window.webkitURL;
                 var source = URLObj.createObjectURL(blob);
@@ -17673,11 +17677,11 @@ window.onload = function() {
 
 }
     </script>
-    <link rel="stylesheet" type="text/css" href="style30d7.css?nocache=4">
+    <link rel="stylesheet" type="text/css" href="style.css?nocache=4">
 </head>
 
 <body>
-    <h1 class="pagetitle" id="pagetitle"><a href="https://r74n.com/" class="backbutton" target="_blank">&lt;</a></h1>
+    <h1 class="pagetitle" id="pagetitle"><a href="https://R74n.com" class="backbutton" target="_blank">&lt;</a></h1>
     <noscript>You don't have JavaScript enabled! JavaScript is required to play Sandboxels, and most other browser tools.</noscript>
     <div id="totalWrapper">
     <div id="gameWrapper">
@@ -17734,7 +17738,7 @@ window.onload = function() {
                 <div id="categoryControls"></div>
                 <div id="elementControls"></div>
             </div>
-            <div id="extraInfo"><small><a href="changelog.html" id="changelogButton" target="_blank">Changelog</a> • <a href="feedback.html" target="_blank" style="color:lime;">Feedback</a> • <a href="https://sandboxels.wiki.gg/" target="_blank" id="wikiButton" title="Official Sandboxels Wiki - wiki.gg" style="color:white;">Wiki</a> • <a id="moreSocial" href="https://twitter.com/R74nCom" rel="me" target="_blank">Twitter</a> • <a href="https://discord.gg/ejUc6YPQuS" target="_blank" style="color:#2f60ff;">Discord</a><span id="install-button" style="display:none">&nbsp;• <a onclick="deferredPrompt.prompt(); return false" href="#" style="text-shadow: 0px 2px 10px #ff00ff; cursor:pointer">Install Offline</a></span><!--<br><br><a style="color:lime" target="_blank" href="https://docs.google.com/forms/d/e/1FAIpQLSeYMbngtbBHZ7hkz8jpbHl7TiAItqukrhtntKgAHjH30fY08A/viewform?usp=sf_link">FILL OUT THE CENSUS<span style="color:red">(NEW)</span></a>--></small></div>
+            <div id="extraInfo"><small><a href="https://sandboxels.r74n.com/changelog" id="changelogButton" target="_blank">Changelog</a> • <a href="https://sandboxels.R74n.com/feedback" target="_blank" style="color:lime;">Feedback</a> • <a href="https://sandboxels.wiki.gg/" target="_blank" id="wikiButton" title="Official Sandboxels Wiki - wiki.gg" style="color:white;">Wiki</a> • <a id="moreSocial" href="https://twitter.com/R74nCom" rel="me" target="_blank">Twitter</a> • <a href="https://discord.gg/ejUc6YPQuS" target="_blank" style="color:#2f60ff;">Discord</a><span id="install-button" style="display:none">&nbsp;• <a onclick="deferredPrompt.prompt(); return false" href="#" style="text-shadow: 0px 2px 10px #ff00ff; cursor:pointer">Install Offline</a></span><!--<br><br><a style="color:lime" target="_blank" href="https://docs.google.com/forms/d/e/1FAIpQLSeYMbngtbBHZ7hkz8jpbHl7TiAItqukrhtntKgAHjH30fY08A/viewform?usp=sf_link">FILL OUT THE CENSUS<span style="color:red">(NEW)</span></a>--></small></div>
             <script>
                 // version check
                 if (!settings["lastversion"] || settings["lastversion"]!==currentversion) {
@@ -17791,7 +17795,7 @@ window.onload = function() {
                         for (var i = 0; i < enabledMods.length; i++) {
                             var mod = enabledMods[i];
                             // modName is the last part of the mod's path
-                            var modName = mod.split("index.html").pop();
+                            var modName = mod.split("/").pop();
                             modManagerList.innerHTML += `<li><a href="${mod.replaceAll('"','')}" target="_blank">${modName}</a> <span class="removeModX" onclick='removeMod("${mod.replaceAll('"','\\\"')}")'>X</span></li>`
                         }
                     }
@@ -17799,7 +17803,7 @@ window.onload = function() {
                         document.getElementById("noMods").style.display = "block";
                     }
                 </script>
-                See the <a href="mod-list.html" target="_blank">Mod List</a> or <a href="https://github.com/R74nCom/sandboxels/" target="_blank">GitHub</a>.
+                See the <a href="mod-list" target="_blank">Mod List</a> or <a href="https://github.com/R74nCom/sandboxels/" target="_blank">GitHub</a>.
                 <br><br><br><br>
             </div>
             <input type="text" id="modManagerUrl" placeholder=".JS URL..." onkeydown="if (event.keyCode == 13) {addMod(this.value);this.value = '';};this.focus();" enterkeyhint="done"></input>
@@ -17973,7 +17977,7 @@ Cancer, Landmine, Grenade, Smoke Grenade">?</span>
             };
             affRequest.send();
         </script> -->
-        <p>🌐 Language <a href="translate.html" target="_blank">[BETA]</a>: <select onchange="if (this.value === 'en'){setSetting('lang',null)}else{setSetting('lang',this.value)}location.reload()" id="langSelect">
+        <p>🌐 Language <a href="https://sandboxels.R74n.com/translate" target="_blank">[BETA]</a>: <select onchange="if (this.value === 'en'){setSetting('lang',null)}else{setSetting('lang',this.value)}location.reload()" id="langSelect">
             <option selected value="en">English (American)</option>
             <option value="en_gb">English (British)</option>
             <option value="cs">Čeština</option>
@@ -17990,7 +17994,7 @@ Cancer, Landmine, Grenade, Smoke Grenade">?</span>
                 <option value="ru">Русский Язык</option>
             </optgroup>
         </select></p>
-        <p>Try our NEW GAME: <a href="https://r74n.com/cook/" target="_blank">Infinite Chef</a></p>
+        <p>Try our NEW GAME: <a href="https://R74n.com/cook/" target="_blank">Infinite Chef</a></p>
         <p>Email us at <a href="mailto:contact@R74n.com?subject=%5BSandboxels%5D">contact@R74n.com</a> for advertising, help, or education!</p>
         <div id="newsletterFrame">Be notified when Sandboxels and other R74n projects are updated, along with ramblings from the developer!<br><br>
             <form action="https://news.r74n.com/api/v1/free?nojs=true" method="post" class="form _form_1mxvn_6" novalidate="" target="_blank"><input type="hidden" name="first_url" value="https://news.r74n.com/embed"><input type="hidden" name="first_referrer"><input type="hidden" name="current_url" value="https://news.r74n.com/embed"><input type="hidden" name="current_referrer"><input type="hidden" name="referral_code"><input type="hidden" name="source" value="embed"><input type="hidden" name="referring_pub_id"><input type="hidden" name="additional_referring_pub_ids">
@@ -18029,19 +18033,19 @@ Cancer, Landmine, Grenade, Smoke Grenade">?</span>
         <p>Falling-sand games are a genre of sandbox games characterized by falling particles of various types.</p>
         <p>Simply click or use your touchscreen to select a category, like <strong>Liquids</strong>, then pick an element, like <strong>Water</strong>. Drag on the canvas above to place your pixels, and watch them interact with others!</p>
         <img src="icons/wallpaper.webp" style="width:100%" alt="Rainforest landscape made in Sandboxels" title="Rainforest landscape made in Sandboxels">
-        <p>Sandboxels has many <a href="education-use.html">applications in education</a>. With a hands-on experience, it can give students an understanding of emerging phenomena in many fields, such as biology, chemistry, ecology, geology, cooking, and even virology. There are countless aspects to discover.</p>
+        <p>Sandboxels has many <a href="https://sandboxels.R74n.com/education-use">applications in education</a>. With a hands-on experience, it can give students an understanding of emerging phenomena in many fields, such as biology, chemistry, ecology, geology, cooking, and even virology. There are countless aspects to discover.</p>
         <p>We have a thriving community on <a href="https://discord.gg/ejUc6YPQuS" target="_blank">Discord</a>! There you can post feedback or share your creations.</p>
         <!-- <p>If you'd like to support us, consider donating on <a href="https://www.paypal.com/donate/?hosted_button_id=GCX4VHQ7SZWTN" target="_blank">PayPal</a> or <a href="https://cash.app/$emojiartist" target="_blank" title="$emojiartist">CashApp</a>, or subscribing on Discord.</p> -->
         <p>Business inquiries? Education stories? Help needed? Email us at <a href="mailto:contact@R74n.com?subject=%5BSandboxels%5D">contact@R74n.com</a>!</p>
-        <p>More links: <a href="help.html" rel="help">Help</a> • <a href="tips.html">Tips</a> • <a href="mod-list.html">Mods</a> • <a href="mobile-use.html">Mobile</a> • <a href="offline-use.html">Offline</a> • <a href="https://r74n.com/privacy">Privacy</a></p>
-        <p>Thanks to our Patrons: Serioustar, ggod, Midi_png, personman, fnl4y, PitsPower, swagg boi, moss, Suss, WeiChei, Trent, u2ce</p>
+        <p>More links: <a href="https://sandboxels.R74n.com/help" rel="help">Help</a> • <a href="https://sandboxels.R74n.com/tips">Tips</a> • <a href="https://sandboxels.R74n.com/mod-list">Mods</a> • <a href="https://sandboxels.R74n.com/mobile-use">Mobile</a> • <a href="https://sandboxels.R74n.com/offline-use">Offline</a> • <a href="https://R74n.com/privacy">Privacy</a></p>
+        <p>Thanks to our Patrons: Serioustar, ggod, Midi_png, personman, fnl4y, PitsPower, swagg boi, moss, Suss, epsiloneridani, WeiChei, Trent, u2ce</p>
         <p style="display:none" id="langCredit">Translation by R74n</p>
-        <p>Sandboxels is developed by R74n. Check out <a href="https://r74n.com/" rel="author" target="_blank">our other projects</a>!</p>
+        <p>Sandboxels is developed by R74n. Check out <a href="https://R74n.com" rel="author" target="_blank">our other projects</a>!</p>
         <script>
             // add the above elements programmatically when the page loads
             window.addEventListener('load', function() {
                 var adscript1 = document.createElement('script');
-                adscript1.src = "../pagead2.googlesyndication.com/pagead/js/fe1b0.txt?client=ca-pub-8485284630785740";
+                adscript1.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8485284630785740";
                 adscript1.crossorigin = "anonymous";
                 document.getElementById('bottomLeftBox').appendChild(adscript1);
                 var ins1 = document.createElement('ins');
@@ -18076,7 +18080,7 @@ Cancer, Landmine, Grenade, Smoke Grenade">?</span>
             <tr><td>Change view</td>   <td><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></td></tr>
             <tr><td>Toggle GUI</td>   <td><kbd>F1</kbd></td></tr>
             <tr><td>Capture screenshot</td>   <td><kbd>C</kbd> or <kbd>F2</kbd></td></tr>
-            <tr><td colspan="2" style="text-align:center"><strong><a href="controls.html" target="_blank" title="Open the controls file">More controls</a></strong></td></tr>
+            <tr><td colspan="2" style="text-align:center"><strong><a href="https://sandboxels.r74n.com/controls" target="_blank" title="Open the controls file">More controls</a></strong></td></tr>
         </table>
     </div>
 </div>
@@ -18103,6 +18107,4 @@ Cancer, Landmine, Grenade, Smoke Grenade">?</span>
 
 </body>
 
-
-<!-- Mirrored from sandboxels.r74n.com/ by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 27 Dec 2024 21:09:05 GMT -->
 </html>
