@@ -1,10 +1,11 @@
 body {
-  font-family: Lora;
-   font-size: 14px;
-    font-style: normal;
-     font-variant: normal;
-      font-weight: 400;
-       line-height: 20px;
+  font-family: Ubuntu;
+  font-size: 14px;
+  font-style: normal;
+  font-variant: normal;
+  font-weight: 400;
+  color:grey;
+  line-height: 20px;
   background-image: url(20240611_095100.jpg);
   background-repeat: no-repeat;
   background-size: cover;
