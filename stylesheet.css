@@ -4,7 +4,6 @@ body {
   font-style: normal;
   font-variant: normal;
   font-weight: 400;
-  color:grey;
   line-height: 20px;
   background-image: url(20240611_095100.jpg);
   background-repeat: no-repeat;
@@ -15,3 +14,20 @@ h1 {
   color: navy;
   margin-left: 20px;
 }
+
+.game-link {
+  display: inline-block;
+  padding: 10px;
+  background-color: #f0f0f0; /* Light gray background */
+  border: 1px solid #ccc; /* Light gray border */
+  border-radius: 5px; /* Rounded corners */
+  text-decoration: none; /* Remove underline */
+  color: #333; /* Dark text color */
+  margin-bottom: 10px; /* Space between the boxes */
+}
+
+.game-link:hover {
+  background-color: #e0e0e0; /* Slightly darker gray on hover */
+  border-color: #aaa; /* Darker border on hover */
+}
+
