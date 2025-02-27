@@ -18,7 +18,7 @@ h1 {
 .game-link {
   display: inline-block;
   padding: 10px;
-  background-color: #f0f0f0; /* Light gray background */
+  background-color: #3ffc68; /* Light green background */
   border: 1px solid #ccc; /* Light gray border */
   border-radius: 5px; /* Rounded corners */
   text-decoration: none; /* Remove underline */
@@ -27,7 +27,7 @@ h1 {
 }
 
 .game-link:hover {
-  background-color: #e0e0e0; /* Slightly darker gray on hover */
+  background-color: #2ade51; /* Slightly darker green on hover */
   border-color: #aaa; /* Darker border on hover */
 }
 
