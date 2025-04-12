@@ -191,6 +191,8 @@ function modulateElement() {
   
   let element = {};
 
+  element.desc = `Modulated at X${currentModulatorPos[0]},Y${currentModulatorPos[1]},Z${currentModulatorPos[2]}`;
+
   let name = generateName();
 
   let oldName = name;
@@ -336,6 +338,8 @@ function modulateElement() {
   if (modulateValue(81) < 0.25) {
     element.conduct = modulateRange(1,100,82)/100;
   }
+
+  element.grain = modulateRange(1,5,83);
 
   addElement(name,element);
   selectCategory(element.category);
