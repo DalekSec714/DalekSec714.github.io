@@ -19,7 +19,8 @@ const terminal = document.getElementById('terminal');
       },
       echo: (args) => args.join(' '),
       date: () => new Date().toString(),
-      whoami: () => `Logged in as: ${loggedInUser}`,
+      user: () => `Logged in as: ${loggedInUser}`,
+      enablesystem: (args) => `Enabling System: ${args}`,
       login: () => {
         if (loggedInUser) return `Already logged in as ${loggedInUser}`;
         loginStep = 'username';
