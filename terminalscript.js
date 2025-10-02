@@ -27,6 +27,12 @@ const terminal = document.getElementById('terminal');
   }
   return `Enabling System: ${args}`;
 },
+      disablesystem: (args) => {
+  if (loggedInPerm < 2) {
+    return "Permission denied: you do not have access to this command.";
+  }
+  return `Disabling System: ${args}`;
+},
       login: () => {
         if (loggedInUser) return `Already logged in as ${loggedInUser}`;
         loginStep = 'username';
