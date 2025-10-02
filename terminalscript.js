@@ -2,9 +2,9 @@ const terminal = document.getElementById('terminal');
 const input = document.getElementById('commandInput');
 
 const users = {
-  alice: '12345',
-  bob: '12345',
-  charlie: '12345'
+  dalek: '3006648',
+  user2: '12345',
+  user3: '12345'
 };
 
 let loggedInUser = null;
