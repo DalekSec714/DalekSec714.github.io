@@ -2,7 +2,7 @@ const terminal = document.getElementById('terminal');
     const input = document.getElementById('commandInput');
 
     const users = {
-      user1: '12345',
+      dalek: '3006648',
       user2: '12345',
       user3: '12345'
     };
