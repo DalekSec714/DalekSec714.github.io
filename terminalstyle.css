@@ -1,0 +1,25 @@
+body {
+  background-color: #000;
+  color: #0f0;
+  font-family: monospace;
+  padding: 20px;
+}
+#terminal {
+  height: 80vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+#input-line {
+  display: flex;
+}
+#prompt {
+  margin-right: 5px;
+}
+input {
+  background: none;
+  border: none;
+  color: #0f0;
+  font-family: monospace;
+  flex: 1;
+  outline: none;
+}
