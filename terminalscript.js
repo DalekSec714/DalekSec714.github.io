@@ -2,9 +2,9 @@ const terminal = document.getElementById('terminal');
     const input = document.getElementById('commandInput');
 
     const users = {
-      dalek: {'3006648',perm: 2},
-      user2: {'12345',perm: 1},
-      user3: {'12345',perm:1}
+      dalek: { password: '3006648', perm: 2 },
+      user2: { password: '12345', perm: 1 },
+      user3: { password: '12345', perm: 1 }
     };
 
     let loggedInUser = null;
@@ -53,7 +53,7 @@ const terminal = document.getElementById('terminal');
       }
 
       if (loginStep === 'password') {
-        if (cmd === users[tempUser]) {
+        if (cmd === users[tempUser].password) {
           loggedInUser = tempUser;
           loggedInPerm = users[tempUser].perm;
           terminal.innerHTML += `> ********\nLogin successful. Welcome, ${loggedInUser}!\n`;
