@@ -2,12 +2,13 @@ const terminal = document.getElementById('terminal');
     const input = document.getElementById('commandInput');
 
     const users = {
-      dalek: '3006648',
-      user2: '12345',
-      user3: '12345'
+      dalek: {'3006648',perm: 2},
+      user2: {'12345',perm: 1},
+      user3: {'12345',perm:1}
     };
 
     let loggedInUser = null;
+    let loggedInPerm = null;
     let loginStep = null;
     let tempUser = '';
 
@@ -20,7 +21,12 @@ const terminal = document.getElementById('terminal');
       echo: (args) => args.join(' '),
       date: () => new Date().toString(),
       user: () => `Logged in as: ${loggedInUser}`,
-      enablesystem: (args) => `Enabling System: ${args}`,
+      enablesystem: (args) => {
+  if (loggedInPerm < 2) {
+    return "Permission denied: you do not have access to this command.";
+  }
+  return `Enabling System: ${args}`;
+},
       login: () => {
         if (loggedInUser) return `Already logged in as ${loggedInUser}`;
         loginStep = 'username';
@@ -49,6 +55,7 @@ const terminal = document.getElementById('terminal');
       if (loginStep === 'password') {
         if (cmd === users[tempUser]) {
           loggedInUser = tempUser;
+          loggedInPerm = users[tempUser].perm;
           terminal.innerHTML += `> ********\nLogin successful. Welcome, ${loggedInUser}!\n`;
         } else {
           terminal.innerHTML += `> ********\nIncorrect password.\n`;
