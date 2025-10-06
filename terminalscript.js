@@ -13,7 +13,7 @@ const terminal = document.getElementById('terminal');
     let tempUser = '';
 
     const commands = {
-      help: () => `Available commands:\nhelp - show this help\nclear - clear the terminal\necho [text] - repeat the text\ndate - show current date and time\nwhoami - show logged-in user`,
+      help: () => `Available commands:\nhelp - show this help\nclear - clear the terminal\necho [text] - repeat the text\ndate - show current date and time\nwhoami - show logged-in user\nrandom [min,max] - generate a random number in the range`,
       clear: () => {
         terminal.innerHTML = '';
         return '';
@@ -21,6 +21,11 @@ const terminal = document.getElementById('terminal');
       echo: (args) => args.join(' '),
       date: () => new Date().toString(),
       user: () => `Logged in as: ${loggedInUser}`,
+      random:(min,max) => {
+            min = Math.ceil(min); // Ensures min is an integer
+            max = Math.floor(max); // Ensures max is an integer
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+      },
       enablesystem: (args) => {
   if (loggedInPerm < 2) {
     return "Permission denied: you do not have access to this command.";
@@ -33,6 +38,7 @@ const terminal = document.getElementById('terminal');
   }
   return `Disabling System: ${args}`;
 },
+  
       login: () => {
         if (loggedInUser) return `Already logged in as ${loggedInUser}`;
         loginStep = 'username';
