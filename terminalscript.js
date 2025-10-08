@@ -21,11 +21,16 @@ const terminal = document.getElementById('terminal');
       echo: (args) => args.join(' '),
       date: () => new Date().toString(),
       user: () => `Logged in as: ${loggedInUser}`,
-      random:(min,max) => {
-            min = Math.ceil(min); // Ensures min is an integer
-            max = Math.floor(max); // Ensures max is an integer
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-      },
+      random: (args) => {
+        if (args.length < 2) return "Usage: random [min] [max]";
+        let min = Number(args[0]);
+        let max = Number(args[1]);
+        if (isNaN(min) || isNaN(max)) return "Arguments must be numbers.";
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        if (max < min) return "Max must be greater than or equal to min.";
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+},
       enablesystem: (args) => {
   if (loggedInPerm < 2) {
     return "Permission denied: you do not have access to this command.";
