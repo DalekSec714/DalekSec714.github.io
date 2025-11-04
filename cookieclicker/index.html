@@ -2,7 +2,7 @@
 <html>
 <head>
 <script type="text/javascript">
-    window.cookieconsent_options = {"message":"Unsurprisingly, this website uses cookies for ads and traffic analysis.","dismiss":"Got it!","learnMore":"Learn more","link":"http://orteil.dashnet.org/c[...]"}
+    window.cookieconsent_options = {"message":"Unsurprisingly, this website uses cookies for ads and traffic analysis.","dismiss":"Got it!","learnMore":"Learn more","link":"http://orteil.dashnet.or[...]"};
 </script>
 
 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/1.0.9/cookieconsent.min.js"></script>
@@ -17,17 +17,19 @@ Feel free to alter this code to your liking, but please do not re-host it, do no
 <link rel="shortcut icon" href="img/favicon.ico" />
 <!--<link href="https://fonts.googleapis.com/css?family=Kavoon&subset=latin,latin-ext" rel="stylesheet" type="text/css">-->
 <link href='https://fonts.googleapis.com/css?family=Merriweather:900&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
-<!-- Removed ad detection script -->
+<!-- Removed ad detection script (keep commented to avoid loading ads) -->
 <!-- <script src="showads.js"></script> --><!-- this just detects adblockers so we can adjust the layout and play nice -->
 <script src="base64.js"></script>
 <script src="main.js?v=2.058"></script>
-<!--<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!--
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <script>
      (adsbygoogle = window.adsbygoogle || []).push({
           google_ad_client: "ca-pub-8491708950677704",
           enable_page_level_ads: true
      });
-</script>-->  
+</script>
+-->
 <link href="style.css?v=2.050" rel="stylesheet" type="text/css">
 <!--[if IE]>
 <style type="text/css">
@@ -38,8 +40,6 @@ Feel free to alter this code to your liking, but please do not re-host it, do no
 <!--[if lt IE9]><script src="excanvas.compiled.js"></script><![endif]-->
 
 </head>
-<body>
-
 <div id="wrapper">
 
 	<div id="topBar">
@@ -48,7 +48,7 @@ Feel free to alter this code to your liking, but please do not re-host it, do no
 		<div><a href="http://orteil42.tumblr.com" target="_blank" id="topbarTumblr">tumblr</a></div>
 		<!--<div><a href="http://forum.dashnet.org" target="_blank">Official forum</a></div-->  
 		<div style="position:relative;"><div style="width:22px;height:32px;background:url(img/discord.png);position:absolute;left:0px;top:0px;pointer-events:none;"></div><a href="https://discordapp.com/invi[...]</div>
-		<div style="position:relative;"><div style="width:25px;height:32px;background:url(img/weeHoodie.png);position:absolute;left:-2px;top:0px;pointer-events:none;"></div><a class="blueLink" href="http://[...]"></div>
+		<div style="position:relative;"><div style="width:25px;height:32px;background:url(img/weeHoodie.png);position:absolute;left:-2px;top:0px;pointer-events:none;"></div><a class="blueLink" href="htt[...]"></div>
 		<div style="position:relative;"><div style="width:22px;height:32px;background:url(img/patreon.png);position:absolute;left:0px;top:0px;pointer-events:none;"></div><a class="orangeLink" href="https://[...]"></div>
 		<div style="position:relative;display:none;font-weight:bold;" id="heralds"><div style="position:absolute;top:-4px;width:31px;height:39px;background:url(img/heraldFlag.png);left:50%;margin-left:-15px[...]"</div>
 		<div><a class="lightblueLink" style="font-weight:bold;" href="https://play.google.com/store/apps/details?id=org.dashnet.cookieclicker" target="_blank" id="topbarMobileCC">Cookie Clicker for Android</a></div>
@@ -181,8 +181,8 @@ Feel free to alter this code to your liking, but please do not re-host it, do no
 				<div id="products" class="storeSection"></div>
 			</div>
 			
-			<!-- detectAds element commented out -->
-			<!-- <div id="detectAds" class="adBanner" style="background:transparent;width:1px;height:1px;"></div> -->
+			<!-- detectAds element restored to preserve layout/ad-detection checks -->
+			<div id="detectAds" class="adBanner" style="background:transparent;width:1px;height:1px;"></div>
 			<div id="support" style="margin-top:130px;">
 				<div class="supportComment">v Sponsored links v</div>
 				<div style="position:relative;">
