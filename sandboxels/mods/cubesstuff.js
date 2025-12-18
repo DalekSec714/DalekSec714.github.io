@@ -206,7 +206,7 @@ elements.molten_iron.reactions.sulfur = { elem1: "pyrite", elem2: null, chance: 
 elements.molten_iron.reactions.molten_sulfur = { elem1: "pyrite", elem2: null, chance: 0.25 }
 elements.molten_iron.reactions.sulfur_gas = { elem1: "pyrite", elem2: null, chance: 0.25 }
 
-elements.pyrite = {
+elements.cubesstuff_pyrite = {
     color: ["#d8c25e", "#bbaa49", "#998f3e"],
     alias: ["fools_gold", "Iron Disulfide"],
     density: 5000,
@@ -215,7 +215,7 @@ elements.pyrite = {
     grain: 0.4,
     state: "solid",
     behavior: behaviors.WALL,
-    category: "solids"
+    category: "deprecated"
 }
 
 elements.fire_extinguisher_powder = {
@@ -789,7 +789,7 @@ elements.rgb_led = {
         "light": { charge1: 1, elem2: null },
         "liquid_light": { charge1: 1, elem2: null }
     },
-    category: "machines",
+    category: "deprecated",
     tempHigh: 1500,
     stateHigh: ["molten_glass", "molten_glass", "molten_glass", "molten_gallium"],
 
@@ -797,7 +797,7 @@ elements.rgb_led = {
         promptInput("Enter red value (0-255):", function (r_inp) {
             r_inp = parseInt(r_inp);
             if (r_inp > 255 || r_inp < 0 || isNaN(r_inp)) {
-                logMessage("Red value is invalid, using default/last red value: " + r);
+                logMessage("Red value is invalid, using default/last red value: " + globals.red);
             } else {
                 globals.red = r_inp;
             }
@@ -805,7 +805,7 @@ elements.rgb_led = {
             promptInput("Enter green value (0-255):", function (g_inp) {
                 g_inp = parseInt(g_inp);
                 if (g_inp > 255 || g_inp < 0 || isNaN(g_inp)) {
-                    logMessage("Green value is invalid, using default/last green value: " + g);
+                    logMessage("Green value is invalid, using default/last green value: " + globals.green);
                 } else {
                     globals.green = g_inp;
                 }
@@ -813,7 +813,7 @@ elements.rgb_led = {
                 promptInput("Enter blue value (0-255):", function (b_inp) {
                     b_inp = parseInt(b_inp);
                     if (b_inp > 255 || b_inp < 0 || isNaN(b_inp)) {
-                        logMessage("Blue value is invalid, using default/last blue value: " + b);
+                        logMessage("Blue value is invalid, using default/last blue value: " + globals.blue);
                     } else {
                         globals.blue = b_inp;
                     }
@@ -823,7 +823,7 @@ elements.rgb_led = {
     },
 
     onPlace: (pixel) => {
-        var ledColor = RGBToHex([red, green, blue]);
+        var ledColor = RGBToHex([globals.red, globals.green, globals.blue]);
         pixel.color = ledColor;
     }
 };
@@ -1321,7 +1321,7 @@ elements.custom_bomb = {
 
         // If pixel is at the bottom or resting on a solid
         if (outOfBounds(pixel.x, pixel.y + 1) || (belowPixel && belowPixel.element !== "custom_bomb" && !isEmpty(pixel.x, pixel.y + 1) && belowPixel.element !== "fire" && belowPixel.element !== "smoke")) {
-            explodeAt(pixel.x, pixel.y, 10, explodeElem);
+            explodeAt(pixel.x, pixel.y, 10, globals.explodeElem);
             deletePixel(pixel.x, pixel.y);
         }
     }
@@ -1667,7 +1667,7 @@ elements.robot_body = {
 };
 
 // Robot creator element
-var mode = "Aimless"
+globals.mode = "Aimless"
 elements.robot = {
     color: "#b1b1b1",
     category: "machines",
@@ -1679,10 +1679,10 @@ elements.robot = {
             (choice) => {
                 if (choice === "Controlled" && isMobile) {
                     logMessage("Controlled mode doesn't work on mobile");
-                    mode = "Aimless";
+                    globals.mode = "Aimless";
                 } else {
-                    mode = choice || "Aimless";
-                    if (mode === "Controlled") {
+                    globals.mode = choice || "Aimless";
+                    if (globals.mode === "Controlled") {
                         logMessage("Controls: A/D to move and W to jump or (Not reccomended) ←/→ to move, and ↑ to jump");
                     }
                 }
@@ -1695,17 +1695,17 @@ elements.robot = {
         if (isEmpty(pixel.x, pixel.y - 1)) {
             createPixel("robot_head", pixel.x, pixel.y - 1);
             const head = getPixel(pixel.x, pixel.y - 1);
-            head.mode = mode;
+            head.mode = globals.mode;
             changePixel(pixel, "robot_body");
-            pixel.mode = mode;
+            pixel.mode = globals.mode;
         }
         // Try to create body below if above is blocked
         else if (isEmpty(pixel.x, pixel.y + 1)) {
             createPixel("robot_body", pixel.x, pixel.y + 1);
             const body = getPixel(pixel.x, pixel.y + 1);
-            body.mode = mode;
+            body.mode = globals.mode;
             changePixel(pixel, "robot_head");
-            pixel.mode = mode;
+            pixel.mode = globals.mode;
         }
         // Delete if no space
         else {
@@ -1763,7 +1763,7 @@ globals.heatAmount = 2
 
 elements.adjustable_heater = {
     color: "#ff0000",
-    category: "machines",
+    category: "deprecated",
     insulate: true,
     behavior: behaviors.WALL,
 
@@ -1846,7 +1846,7 @@ globals.coolAmount = 2; // adjustable step
 
 elements.adjustable_cooler = {
     color: "#0000ff",
-    category: "machines",
+    category: "deprecated",
     insulate: true,
     behavior: behaviors.WALL,
 
@@ -2017,7 +2017,7 @@ elements.indestructable_filter = {
     }
 }
 
-globals.glass_hole_expand = false
+globals.blackHoleExpand = false
 elements.black_hole = {
     color: "#111111",
     hardness: 1,
@@ -2105,7 +2105,7 @@ elements.black_hole = {
                     }
                 }
             }
-            if (globals.glass_hole_expand) {
+            if (globals.blackHoleExpand) {
                 for (var i = 0; i < adjacentCoords.length; i++) {
                     var x = pixel.x + adjacentCoords[i][0];
                     var y = pixel.y + adjacentCoords[i][1];
@@ -2127,10 +2127,10 @@ elements.black_hole = {
                     choice = "No"
                 }
                 if (choice == "Yes") {
-                    globals.glass_hole_expand = true
+                    globals.blackHoleExpand = true
                 }
                 else {
-                    globals.glass_hole_expand = false
+                    globals.blackHoleExpand = false
                 }
             }
         )
