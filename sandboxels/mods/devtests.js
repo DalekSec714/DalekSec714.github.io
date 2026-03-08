@@ -276,3 +276,43 @@ elements.color_eraser = {
     },
     category: "special"
 }
+
+
+// potions?
+elements.imbued_water = {
+    color: "#694fff",
+    behavior: behaviors.LIQUID,
+    tick: function(pixel) {
+        if (pixel.glint) {
+            if (Math.random() < 0.05) pixel.glint --;
+            return;
+        }
+        if (Math.random() < 0.003) pixel.glint = 5;
+    },
+    renderer: function(pixel,ctx) {
+		drawDefault(ctx,pixel);
+        if (pixel.glint) {
+            drawSquare(ctx, "#ffd94f", pixel.x, pixel.y, undefined, pixel.glint / 10)
+        }
+    },
+    reactions: {
+        "water": { elem2:"imbued_water", chance:0.01 }
+    },
+    tempHigh: 100,
+    stateHigh: ["steam","steam","antigas"],
+    tempLow: 0,
+    stateLow: ["ice","ice","antiice"],
+    category: "liquids",
+    hidden: true,
+    state: "liquid",
+    density: 979,
+    conduct: 0.02,
+    stain: -1,
+    extinguish: true
+}
+if (!elements.antipowder.reactions) elements.antipowder.reactions = {};
+elements.antipowder.reactions.water = { elem1:null, elem2:"imbued_water" };
+if (!elements.antigas.reactions) elements.antigas.reactions = {};
+elements.antigas.reactions.water = { elem1:null, elem2:"imbued_water", tempMax:90 };
+if (!elements.antifluid.reactions) elements.antifluid.reactions = {};
+elements.antifluid.reactions.water = { elem1:null, elem2:"imbued_water" };

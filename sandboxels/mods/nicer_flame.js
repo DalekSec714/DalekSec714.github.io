@@ -8,6 +8,7 @@ var coldFireBlending = 0.9;
 
 function cssColorToRGB(color) {
 	let rgbMatch = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	if (!rgbMatch) return [255,255,255];
 	return [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
 }
 

@@ -1901,7 +1901,7 @@ function stabilizeLogicGates() {
 
 	for (let i = 0; i < logicgatesElements.length; i++) {
 		elements[logicgatesElements[i]].cc_stableTick = elements[logicgatesElements[i]].tick;
-		elements[logicgatesElements[i]].tick = null;
+		elements[logicgatesElements[i]].tick = undefined;
 	}
 }
 

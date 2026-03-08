@@ -378,6 +378,7 @@ doStaining = function (pixel) {
           }
           // parse rgb color string of newPixel rgb(r,g,b)
           var rgb = newPixel.color.match(/\d+/g);
+          if (rgb === null) continue;
           if (elements[pixel.element].stainSelf && elements[newPixel.element].id === elements[pixel.element].id) {
             // if rgb and newColor are the same, continue
             if (rgb[0] === newColor[0] && rgb[1] === newColor[1] && rgb[2] === newColor[2]) {
