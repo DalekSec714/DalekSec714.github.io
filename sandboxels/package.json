@@ -1,0 +1,18 @@
+{
+    "name": "sandboxels-electron",
+    "version": "1.10.2",
+    "description": "Executable build for Sandboxels, the in-browser science experimentation simulator.",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "R74n",
+    "license": "SEE LICENSE IN https://sandboxels.r74n.com/license.txt",
+    "devDependencies": {
+        "electron": "34.5.5"
+    },
+    "dependencies": {
+        "discord-rpc": "^4.0.1",
+        "steamworks.js": "^0.4.0"
+    }
+}
