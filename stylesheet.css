@@ -5,7 +5,9 @@ body {
   font-variant: normal;
   font-weight: 400;
   line-height: 20px;
+  min-height:100vh;
   background-image: linear-gradient(to bottom right, #3250a8, #000d33);
+  background-attachment:fixed;
   /* background-image: url(20240611_095100.jpg); */
   background-repeat: no-repeat;
   background-size: cover;
