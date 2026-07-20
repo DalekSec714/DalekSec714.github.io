@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1200"
+   height="600"
+   viewBox="0 0 48 24"
+   fill="#012169"
+   version="1.1"
+   id="svg9"
+   sodipodi:docname="Flag_of_Hawaii.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs9" />
+  <sodipodi:namedview
+     id="namedview9"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.97"
+     inkscape:cx="600.51546"
+     inkscape:cy="300.51546"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg9" />
+  <clipPath
+     id="c1">
+    <path
+       d="M0 0H24V14H0z"
+       id="path1" />
+  </clipPath>
+  <clipPath
+     id="c2">
+    <path
+       d="M0 0V6H22V12H21zM21 0H10.5V13H0V12z"
+       id="path2" />
+  </clipPath>
+  <path
+     d="M 21,12.082474 V 0 H 48 V 24 H 0 V 12 Z"
+     id="path3"
+     sodipodi:nodetypes="ccccccc" />
+  <path
+     d="M 48,0 V 4 H 22 L 10.5,3 10.608247,0 Z m 0,9 v 4 L 10.5,12.041237 10.608247,9 Z m 0,9 v 6 H 0 v -6 z"
+     fill="#ffffff"
+     id="path7"
+     sodipodi:nodetypes="cccccccccccccccc" />
+  <path
+     d="M 48,3 V 6 H 0 V 3 h 21 z m 0,9 v 3 H 0 v -3 z m 0,9 v 3 H 0 v -3 z"
+     fill="#c8102e"
+     id="path8"
+     sodipodi:nodetypes="cccccccccccccccc" />
+  <path
+     d="M 48,6 V 9 H 0 V 6 Z"
+     id="path9"
+     sodipodi:nodetypes="ccccc"
+     style="stroke-width:1.33333" />
+  <rect
+     style="fill:#012169;stroke:none;stroke-width:0.16;fill-opacity:1"
+     id="rect9"
+     width="12"
+     height="12"
+     x="0"
+     y="0" />
+  <polygon
+     class="cls-2"
+     points="162.86984,336.09506 236.03603,375.94244 258.76058,259.31908 282.4465,375.94244 355.8149,335.39119 315.26365,408.75959 431.76019,431.84457 315.26365,455.17006 355.70829,528.43185 282.4465,487.98721 258.77118,604.68092 236.03603,487.98721 162.54148,528.66461 203.21888,455.17006 86.661686,431.5507 203.21888,408.75959 "
+     id="polygon3"
+     style="fill:#fdd430"
+     transform="matrix(0.03105307,0,0,0.03105307,-2.0492949,-7.4149255)" />
+</svg>

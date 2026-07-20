@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1200"
+   height="600"
+   viewBox="0 0 12 6"
+   version="1.1"
+   id="svg3"
+   sodipodi:docname="Flag_of_Kuwait.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3" />
+  <sodipodi:namedview
+     id="namedview3"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.2883333"
+     inkscape:cx="358.99094"
+     inkscape:cy="305.43338"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3" />
+  <rect
+     width="12"
+     height="6"
+     fill="#007a3d"
+     id="rect1" />
+  <rect
+     width="12"
+     height="4"
+     y="2"
+     fill="#fff"
+     id="rect2" />
+  <rect
+     width="12"
+     height="2"
+     y="4"
+     fill="#ce1126"
+     id="rect3" />
+  <polygon
+     points="0,0 3,2 3,4 0,6"
+     id="polygon3" />
+  <polygon
+     class="cls-2"
+     points="203.21888,408.75959 162.86984,336.09506 236.03603,375.94244 258.76058,259.31908 282.4465,375.94244 355.8149,335.39119 315.26365,408.75959 431.76019,431.84457 315.26365,455.17006 355.70829,528.43185 282.4465,487.98721 258.77118,604.68092 236.03603,487.98721 162.54148,528.66461 203.21888,455.17006 86.661686,431.5507 "
+     id="polygon3-4"
+     style="fill:#fdd430"
+     transform="matrix(0.0056174,0,0,0.0056174,0.04390848,0.5732832)" />
+</svg>

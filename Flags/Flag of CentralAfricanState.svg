@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1000"
+   height="600"
+   viewBox="-50 -30 100 60"
+   fill="#c8102e"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="Flag of CentralAfricanState.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview4"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.88"
+     inkscape:cx="483.52273"
+     inkscape:cy="297.15909"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4" />
+  <title
+     id="title1">Flag of Burundi</title>
+  <defs
+     id="defs1">
+    <clipPath
+       id="f">
+      <path
+         d="m-50-30H50v60H-50z"
+         id="path1" />
+    </clipPath>
+  </defs>
+  <path
+     d="m-50-30H50v60H-50z"
+     id="path2" />
+  <path
+     fill="#43b02a"
+     stroke="#fff"
+     stroke-width="8"
+     clip-path="url(#f)"
+     d="m-55-33v66L55-33v66z"
+     id="path3"
+     style="fill:#20603d;fill-opacity:1" />
+  <circle
+     fill="#fff"
+     r="17"
+     id="circle3" />
+  <g
+     transform="scale(0.07020584)"
+     id="g4">
+    <path
+       fill="#e5be01"
+       d="M 0,-168 6.79,-51.56 43.48,-162.28 19.9,-48.04 84,-145.49 31.66,-41.25 118.79,-118.79 41.25,-31.66 145.49,-84 48.04,-19.9 162.28,-43.48 51.56,-6.79 168,0 51.56,6.79 162.28,43.48 48.04,19.9 145.49,84 41.25,31.66 118.79,118.79 31.66,41.25 84,145.49 19.9,48.04 43.48,162.28 6.79,51.56 0,168 -6.79,51.56 -43.48,162.28 -19.9,48.04 -84,145.49 -31.66,41.25 -118.79,118.79 -41.25,31.66 -145.49,84 -48.04,19.9 -162.28,43.48 -51.56,6.79 -168,0 -51.56,-6.79 -162.28,-43.48 -48.04,-19.9 -145.49,-84 l 104.24,52.34 -77.54,-87.13 87.13,77.54 -52.34,-104.24 64.1,97.45 -23.58,-114.24 36.69,110.72 z"
+       id="path4" />
+    <circle
+       fill="none"
+       stroke="#00a3e0"
+       r="49"
+       stroke-width="6"
+       id="circle4"
+       cx="0"
+       cy="0"
+       style="opacity:1" />
+  </g>
+  <metadata
+     id="metadata4">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>Flag of Burundi</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>
