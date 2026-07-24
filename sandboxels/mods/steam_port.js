@@ -150,7 +150,7 @@ window.addEventListener("load",() => {
 
 	const btn = document.getElementById("clearSaves");
 	btn.id = "openFolder";
-	btn.value = "Open Data Folder";
+	btn.innerText = "Open Data Folder";
 	btn.onclick = () => {
 		standaloneSend("openFolder")
 	}

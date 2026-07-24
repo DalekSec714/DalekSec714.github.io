@@ -1,5 +1,6 @@
 * {
   box-sizing: border-box;
+  font-variant-ligatures: no-common-ligatures;
 }
 
 html,
@@ -106,7 +107,7 @@ a:hover {
   margin-top: 55px;
 }
 .standalone #gameDiv.gameDiv-wide {
-  margin-top: 0!important
+  margin-top: 0 !important;
 }
 #game {
   image-rendering: pixelated;
@@ -168,12 +169,14 @@ td {
 kbd {
   /* Look like a button */
   display: inline-block;
-  padding: 4px 10px;;
+  padding: 4px 10px;
   font-weight: 700;
   color: rgb(255, 255, 255);
   background-color: rgb(95, 95, 95);
   border-radius: 0;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 0 2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 2px rgba(0, 0, 0, 0.05);
   font-family: "VT323", "Press Start 2P", Arial;
   cursor: pointer;
 }
@@ -201,7 +204,7 @@ kbd:active {
 }
 .standalone .menuParent {
   background-color: var(--theme-darker-opac85);
-	backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
 
 .menuScreen {
@@ -230,7 +233,13 @@ kbd:active {
   margin-bottom: 4px;
 }
 #promptParent {
-  height: 50%;
+  /* height: 50%; */
+  height: auto;
+  max-height: unset;
+  top: 20%;
+}
+#promptParent.menuParentTall {
+  top: 10%;
 }
 .menuInput {
   position: fixed;
@@ -309,10 +318,16 @@ kbd:active {
   display: flex;
 }
 .menuParent.full .XButton {
-  right: 0px;
+  right: 0px !important;
   position: absolute;
-  top: 0px;
+  top: 0px !important;
   margin: 0;
+}
+.menuParentTall.full {
+  top: 0 !important;
+}
+.menuParentTall.full #promptMenuText {
+  padding-bottom: 0px;
 }
 
 #gameInfoMenu {
@@ -367,9 +382,6 @@ kbd:active {
   margin-top: 15px;
   padding-left: 1px;
 }
-#infoText {
-  white-space: pre-wrap;
-}
 .XButton {
   position: sticky;
   top: -20px;
@@ -385,7 +397,9 @@ kbd:active {
   height: 35px;
   border: none;
   z-index: 12;
-  transition: opacity 0.15s, background-color 0.15s;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s;
   border-left: 3px solid var(--theme-opac50);
   border-bottom: 3px solid var(--theme-opac50);
   background-color: rgb(255, 49, 49, 0.7);
@@ -413,7 +427,8 @@ kbd:active {
   line-height: 1.25;
 }
 
-#promptMenuText {
+#promptMenuText,
+#infoScreen {
   -webkit-user-select: text; /* Safari */
   -khtml-user-select: unset; /* Konqueror HTML */
   -moz-user-select: unset; /* Old versions of Firefox */
@@ -438,6 +453,7 @@ kbd:active {
   padding-left: 1em;
   padding-right: 1em;
   padding-bottom: 15px;
+  line-height: 2;
 }
 #promptMenuInputs > span,
 #promptMenuInputs > input {
@@ -457,9 +473,6 @@ kbd:active {
   height: unset;
   padding-top: 0;
   border-top: 0;
-  position: fixed;
-  max-height: 75%;
-  overflow-y: scroll;
 }
 #promptMenuInputs > #promptChoices {
   flex-direction: row;
@@ -487,9 +500,11 @@ kbd:active {
 }*/
 #modManagerList {
   margin-top: 20px;
+  line-height: 1.25;
 }
 #modManagerTagline {
-  margin-bottom: 4em;
+  margin-top: 1em;
+  display: block;
 }
 #modManagerList li {
   list-style-type: none;
@@ -501,6 +516,9 @@ kbd:active {
   left: -1.5em;
   font-size: 1em;
   font-family: "Press Start 2P";
+}
+#modParent .menuText {
+  padding-bottom: 4em;
 }
 .removeModX {
   color: red;
@@ -514,6 +532,8 @@ kbd:active {
   cursor: pointer;
   text-decoration: underline;
   font-variant: small-caps;
+  vertical-align: unset;
+  text-underline-offset: 3px;
 }
 .infoGrid {
   display: flex;
@@ -521,7 +541,10 @@ kbd:active {
   gap: 6px;
   margin-top: 20px;
   white-space: normal;
-  margin-bottom: 45px;
+  margin-bottom: 20px;
+}
+.infoGrid:first-child {
+  margin-top: 0;
 }
 .infoGrid .infoLink {
   background: rgba(134, 161, 255, 0.15);
@@ -533,6 +556,120 @@ kbd:active {
 .infoGrid .infoLink:hover {
   background: rgba(134, 161, 255, 0.35);
 }
+.infoHidden {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+#infoScreen {
+  display: flex;
+  flex-direction: column;
+}
+.menuTitle .infoLink {
+  text-decoration: none;
+}
+.menuInput.error {
+  background-color: rgb(73, 7, 7);
+}
+#infoScreen .menuTitle,
+#infoScreen .menuText {
+  font-family: "VT323", "Press Start 2P", Arial;
+  font-size: 2em;
+  line-height: 1;
+}
+#infoScreen .menuText {
+  margin-top: 0;
+  padding-bottom: 2em;
+  /* white-space: pre-wrap; */
+  font-size: 1.8em;
+}
+#infoScreen .menuTitle {
+  text-align: left;
+  padding-left: 0;
+  padding-right: 35px;
+  border-bottom: none;
+  font-weight: bold;
+  font-size: 2.2em;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  background: none;
+  position: unset;
+}
+#infoScreen .menuTitle > span {
+  padding-right: 20px;
+}
+#infoScreen .menuTitle > span:last-child {
+  flex-grow: 1;
+}
+#infoScreen .XButton,
+#settingsMenu .XButton {
+  top: 0;
+  right: 0;
+  position: absolute;
+  margin: 0;
+}
+#infoScreen table,
+#infoScreen tr {
+  background: transparent;
+  width: 100%;
+}
+#infoScreen tr {
+  border-bottom: rgba(255, 255, 255, 0.25) solid 2px;
+}
+#infoScreen td {
+  border: none;
+  padding: 5px;
+  vertical-align: top;
+}
+#infoScreen tr:first-child td {
+  padding-top: 0;
+}
+#infoScreen td:first-child {
+  width: 1%;
+  white-space: nowrap;
+  text-transform: uppercase;
+  padding-left: 0;
+}
+#infoScreen td:only-child {
+  text-transform: none;
+  white-space: unset;
+}
+#infoScreen td:last-child {
+  padding-right: 0;
+}
+#infoScreen td:nth-of-type(2) {
+  padding-left: 1em;
+}
+#infoScreen tr:last-of-type {
+  border-bottom: none;
+}
+#infoScreen #infoSubtitle {
+  text-transform: none;
+  font-size: 1.5em;
+  opacity: 0.75;
+  font-style: italic;
+  padding-top: 0;
+  margin-top: 0;
+}
+#infoSubtitle:empty {
+  display: none;
+}
+#infoScreen td > div {
+  display: flex;
+  gap: 0.5em;
+  align-items: start;
+}
+#infoScreen td > div > span:first-child,
+#infoScreen td > div > span:first-child > button {
+  text-align: right;
+}
+#infoScreen td > div > span:first-child,
+#infoScreen td > div > span:last-child {
+  flex-grow: 1;
+  flex-basis: 50%;
+}
+
 .saveSlot {
   display: block;
   border-bottom: 3px solid var(--theme);
@@ -599,14 +736,16 @@ kbd:active {
 .saveOption[disabled="true"]:hover {
   filter: none;
 }
+#savesMenu .menuBottomButton {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
 .menuBottomButton {
   background-color: var(--theme-darkest2);
   text-align: center;
   vertical-align: middle;
   height: 3em;
-  position: absolute;
-  bottom: 0;
-  left: 0;
   width: 100%;
   cursor: pointer;
   border-top: 3px solid var(--theme-opac50);
@@ -622,7 +761,8 @@ kbd:active {
 .menuBottomButton.halfLeft {
   width: 50%;
 }
-.menuBottomButton.halfRight {
+.menuBottomButton.halfRight,
+#savesMenu .menuBottomButton.halfRight {
   left: unset;
   right: 0;
   width: 50%;
@@ -676,7 +816,8 @@ input[type="reset"] {
   width: 100%;
 }
 #underDiv {
-  background-color: var(--theme-darkest);
+  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--theme-darker-opac85);
 }
 #controls {
   padding: 0px 0px;
@@ -708,6 +849,10 @@ input[type="reset"] {
 #controls button:disabled {
   cursor: not-allowed;
   z-index: 13;
+}
+#controls button:focus {
+  box-shadow: none;
+  outline: none;
 }
 button,
 input[type="button"] {
@@ -750,6 +895,7 @@ input[type="button"]:active:hover {
   display: -ms-flexbox; /* TWEENER - IE 10 */
   display: -webkit-flex; /* NEW - Chrome */
   display: flex;
+  justify-content: space-between;
 }
 .stat {
   margin-right: 25px;
@@ -762,6 +908,9 @@ input[type="button"]:active:hover {
   opacity: 0;
   transition: opacity 0.1s 0.2s;
 }
+.stat[modified="true"] {
+  font-style: italic;
+}
 #stats {
   padding: 0px 5px 0px 7px;
   font-size: 0.75em;
@@ -772,7 +921,8 @@ input[type="button"]:active:hover {
   white-space: nowrap;
   overflow-x: hidden;
   overflow-y: hidden;
-  background-color: rgba(255, 255, 255, 0.1);
+  /* background-color: rgba(255, 255, 255, 0.1);
+	background-color: var(--theme-darker-opac85); */
   contain: strict;
 }
 #stat-pos,
@@ -849,6 +999,12 @@ input[type="button"]:active:hover {
 #toolControls button,
 #category-tools button {
   flex-grow: 1;
+}
+#toolControls button {
+  margin-bottom: 0px;
+}
+#category-tools button {
+  margin-top: 2px;
 }
 #toolControls button {
   background-color: var(--theme-darkest2);
@@ -929,6 +1085,8 @@ input[type="button"]:active:hover {
 
 #toolControls {
   z-index: 3;
+  /* background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--theme-darker-opac85); */
 }
 #category-tools {
   z-index: 2;
@@ -982,7 +1140,7 @@ input[type="button"]:active:hover {
 }
 .category {
   margin-top: 0.25em;
-  margin-bottom: 0.25em;
+  /* margin-bottom: 0.25em; */
   position: relative;
   display: -webkit-box; /* OLD - iOS 6-, Safari 3.1-6 */
   display: -moz-box; /* OLD - Firefox 19- (buggy but mostly works) */
@@ -1050,12 +1208,16 @@ input[type="button"]:active:hover {
   #stats {
     padding-top: 4px;
     width: 100%;
-    font-size: 0.75em;
-    line-height: 0;
-    display: flex;
-    justify-content: flex-start;
+    /* line-height: 0; */
+    /* display: flex; */
+    /* justify-content: flex-start; */
     align-items: center;
     gap: 10px;
+
+    font-family: "VT323", "Press Start 2P", Arial;
+    font-size: 24px;
+    height: 1em;
+    line-height: 0.75;
   }
   #saveFile,
   #loadFile {
@@ -1082,6 +1244,10 @@ input[type="button"]:active:hover {
 
   #toolControls button {
     padding: 3px 5px;
+    padding-right: 3px;
+  }
+  #toolControls button.icon {
+    padding-right: 5px;
   }
 
   .footer {
@@ -1155,7 +1321,10 @@ input[type="button"]:active:hover {
   }
 
   #promptParent {
-    height: 300px;
+    top: 10%;
+  }
+  #promptParent.menuParentTall {
+    top: 2.5%;
   }
 
   .site-logo {
@@ -1191,22 +1360,14 @@ input[type="button"]:active:hover {
     height: 42px;
   }
 
-  #settingsMenu .buttons-row, #savePromptMenu .buttons-row {
+  #settingsMenu .buttons-row,
+  #savePromptMenu .buttons-row {
     flex-direction: column;
     gap: 6px !important;
   }
 
-  .menuScreen {
-    padding: 15px !important;
+  .menuTitle {
   }
-
-  .XButton {
-    top: -15px;
-    float: right;
-    margin: -15px -15px 0 0;
-  }
-
-  .menuTitle {}
 }
 @media screen and (min-width: 800px) {
   /* Desktop-Only Styles */
@@ -1285,7 +1446,15 @@ input[type="email"],
   flex-basis: 40%;
   max-width: 50%;
 }
-
+#settingsMenu {
+  padding: 0;
+}
+#settingsMenu .menuText {
+  padding: 20px;
+}
+#settingsMenu .menuTitle {
+  top: 0px;
+}
 #savePromptMenu .toggles-row {
   margin-top: 0;
 }
@@ -1296,15 +1465,13 @@ input[type="email"],
   gap: 0.5em;
   margin-top: 0.5em;
 }
+#saveConfirm {
+  bottom: 0;
+  left: 0;
+}
 
 #savePromptMenu .menuText {
   padding-bottom: 2em;
-}
-#infoScreen .menuText {
-  padding-bottom: 3em;
-}
-#modManagerTagline {
-  padding-bottom: 5em;
 }
 
 /* Settings sections */
@@ -1835,6 +2002,7 @@ kbd {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin: 0;
 }
 #loadingP * {
   padding: 20px;
@@ -1857,10 +2025,18 @@ kbd {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  margin-top: 7px;
+  margin-top: 10px;
   display: flex;
   justify-content: flex-end;
   grid-gap: 30px;
+
+  font-family: "VT323", "Press Start 2P", Arial;
+  font-size: 2em;
+  line-height: 0.5;
+  /* margin-left: 10px; */
+  /* margin-right: 10px; */
+  padding-left: 10px;
+  padding-right: 10px;
   padding-bottom: 15px;
 }
 
@@ -1869,7 +2045,7 @@ kbd {
 }
 
 .footer-title {
-  cursor: pointer
+  cursor: pointer;
 }
 .footer-title:hover {
   text-decoration: underline dashed yellow;
@@ -1930,7 +2106,181 @@ kbd {
 }
 
 @media (max-width: 1300px) {
-  #left_skyscraper, #right_skyscraper {
+  #left_skyscraper,
+  #right_skyscraper {
     display: none;
   }
 }
+
+#controls #toolControls {
+  justify-content: space-around;
+  gap: 6px;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+#toolControls .controlButton {
+  background-color: transparent;
+  margin-left: 0;
+  margin-right: 0;
+}
+/* UI ICONS */
+#controls button.icon {
+  min-width: 45px;
+  color: transparent !important;
+  /* background-color: transparent; */
+  image-rendering: pixelated;
+  text-shadow: none;
+  /* overflow-x: hidden; */
+
+  /* width: 18px; */
+  /* width: 45px; */
+  /* height: 18px; */
+  flex-grow: 1;
+  text-wrap: auto;
+  word-wrap: break-word;
+  line-height: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+#controls button.icon > span {
+  display: block;
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  color: transparent !important;
+  background-image: url("ui_icons.png");
+  background-repeat: no-repeat;
+  background-size: auto 300%;
+  background-clip: content-box;
+  background-origin: content-box;
+  box-sizing: content-box;
+  opacity: 0.87;
+  overflow-x: hidden;
+  scale: 1.22;
+  /* transition: 0.1s scale; */
+}
+@-moz-document url-prefix() {
+  #controls button.icon > span {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    scale: 1 !important;
+  }
+}
+#controls button.icon:active {
+  transform: none;
+}
+#controls button.icon:hover > span,
+#controls button.icon[on="true"] > span {
+  opacity: 1;
+  scale: 1.25;
+}
+#controls button.icon:hover > span {
+  scale: 1.4;
+}
+#controls button.icon:active > span {
+  scale: 1.3;
+}
+@media screen and (max-width: 800px) {
+  #controls button.icon > span {
+    scale: 1.4 !important;
+  }
+  #toolControls {
+    gap: 0.5em;
+  }
+}
+#controls button:disabled {
+  opacity: 0.5;
+}
+#controls button.icon:disabled > span {
+  opacity: 0.87;
+  scale: 1.3;
+}
+/* #pauseButton { background-position: -(index)em -(index)em } */
+#shiftButton > span {
+  background-position: 0em 0em;
+}
+#shiftButton {
+  margin-left: 1em;
+}
+#shiftButton[on="true"] > span {
+  background-position: 0em -1em;
+}
+#pauseButton > span {
+  background-position: -1em 0em;
+}
+#pauseButton[on="true"] > span {
+  background-position: -2em -1em;
+}
+#frameButton > span {
+  background-position: -3em 0em;
+}
+#sizeDownButton > span {
+  background-position: -4em 0em;
+}
+#sizeUpButton > span {
+  background-position: -5em 0em;
+}
+#undoButton > span {
+  background-position: -6em 0em;
+}
+#redoButton > span {
+  background-position: -7em 0em;
+}
+#resetButton > span {
+  background-position: -8em 0em;
+}
+#resetButton:hover > span,
+#resetButton[on="true"] > span {
+  background-position: -8em -1em;
+  color: #f66868;
+}
+#replaceButton > span {
+  background-position: -9em 0em;
+}
+#replaceButton[on="true"] > span {
+  background-position: -9em -1em;
+}
+#replaceButton[modified="true"] > span {
+  background-position: -9em -2em;
+}
+#elemSelectButton > span {
+  background-position: -11em 0em;
+}
+#editModeButton > span {
+  background-position: -10em 0em;
+}
+#editModeButton:hover > span,
+#editModeButton[on="true"] > span {
+  background-position: -10em -1em;
+}
+#infoButton > span {
+  background-position: -11em 0em;
+}
+#infoButton[on="true"] > span {
+  background-position: -11em -1em;
+}
+#savesButton > span {
+  background-position: -12em 0em;
+}
+#savesButton[on="true"] > span {
+  background-position: -12em -1em;
+}
+#modsButton > span {
+  background-position: -13em 0em;
+}
+#modsButton[on="true"] > span {
+  background-position: -13em -1em;
+}
+#settingsButton > span {
+  background-position: -14em 0em;
+}
+#settingsButton[on="true"] > span {
+  background-position: -14em -1em;
+}
+

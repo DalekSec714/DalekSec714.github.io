@@ -93,14 +93,14 @@ function makeYoutubeEmbed(url) {
     youtube.referrerPolicy = 'strict-origin-when-cross-origin'
     youtube.classList.add("youtubePlayer")
     const XButton = document.createElement("button")
-    XButton.classList.add("XButton")
+    XButton.classList.add("oldXButton")
     XButton.addEventListener("click", function () {
         youtube?.parentNode?.remove()
         youtube = undefined;
     })
     XButton.textContent = "X"
     const minimize = document.createElement("button")
-    minimize.classList.add("XButton")
+    minimize.classList.add("oldXButton")
     minimize.style.right = "45px"
     minimize.addEventListener("click", function () {
         if (!minimized) {
@@ -552,6 +552,22 @@ function addCss() {
     image-rendering:crisp-edges;
     width:15px;
     height:auto;
+}
+.oldXButton {
+	position: absolute;
+	right: 0px;
+	top: 0px;
+	font-size: 2em;
+	background-color: rgb(100, 33, 33);
+	padding:5px;
+	text-align:center;
+	border: 4px solid var(--theme);
+	border-top: none;
+	border-right: none;
+	z-index: 12;
+}
+.oldXButton:hover {
+	background-color: rgb(200, 33, 33);
 }
 `;
 

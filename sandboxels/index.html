@@ -39,10 +39,10 @@
 	<meta name="twitter:image" content="./share-card.png">
 	<meta name="twitter:image:alt" content="Magma falling into Water, forming Steam and Basalt. Pixel art style.">
 
-	<!-- <script src="https://plausible.io/js/script.js" defer data-domain="neal.fun"></script> -->
+	<script src="https://plausible.io/js/script.js" defer data-domain="neal.fun"></script>
 	<script> // versioning info
-		currentversion = "1.14";
-		saveVersion = 8;
+		currentversion = "1.15";
+		saveVersion = 9;
 		standalone = true;
 		standaloneType = "steam";
 	</script>
@@ -149,6 +149,7 @@
 		
 		defaultCooldown = 8;
 		behaviors = {
+NONE: function(pixel){},
 POWDER_OLD: [
 	"XX|XX|XX",
 	"XX|XX|XX",
@@ -389,6 +390,9 @@ CLONER: function(pixel, chance) {
 			if (chance && Math.random() > chance) continue;
 			createPixel(pixel.clone.match(/,/) ? choose(pixel.clone.split(",")) : pixel.clone, x, y);
 			if (pixelMap[x][y]) {
+				if (elements[pixelMap[x][y].element].rotatable) {
+					pixelMap[x][y].r = coordsToDirection(coords[0], coords[1]);
+				}
 				pixelMap[x][y].temp = pixel.temp;
 				pixelTempCheck(pixelMap[x][y]);
 			}
@@ -396,7 +400,7 @@ CLONER: function(pixel, chance) {
 	}
 },
 CLONE_ON_CLICK: function(pixel,element) {
-	if (pixel.clone) return;
+	if (pixel.clone || !element) return;
 	if (elements[pixel.element].ignore.indexOf(element) !== -1) return;
 	if (elements[element].tool && elements[element].canPlace !== true) return;
 	if (elements[element].canPlace === false) return;
@@ -791,7 +795,7 @@ SEEDRISE: function(pixel) {
 		eLists = {
 			ANIMAL: ["flea","ant","fly","firefly","bee","frog","fish","worm","termite","rat","slug","snail","stink_bug"],
 			CLEANANIMAL: ["ant","firefly","bee","frog","fish","tadpole"],
-			SEEDS: ["grass_seed","wheat_seed","flower_seed","bamboo_plant","mushroom_spore","corn_seed","potato_seed","cactus","pumpkin_seed"],
+			SEEDS: ["wheat_seed","flower_seed","bamboo_plant","mushroom_spore","corn_seed","potato_seed","cactus","pumpkin_seed"],
 			SOIL: ["dirt","mud","sand","wet_sand","clay_soil","clay","mycelium"],
 			CRAWLTHRU: ["dirt","sand","clay_soil","gravel","mulch","color_sand","grass"],
 			HIVEPLACE: ["wood","tree_branch","evergreen"]
@@ -871,6 +875,7 @@ SEEDRISE: function(pixel) {
 		"infection":{elem1:"wet_sand",elem2:null},
 		"poison":{elem1:"wet_sand",elem2:null},
 		"antidote":{elem1:"wet_sand",elem2:null},
+		"dead_plant":{elem1:"dirt", elem2:"dirt", chance:0.1, oneway:true},
 		"tornado":{elem1:"sandstorm", oneway:true}
 	},
 	tempHigh: 1700,
@@ -885,7 +890,7 @@ SEEDRISE: function(pixel) {
 		promptInput("Enter an element to only delete. Enter multiple separated by commas.", function(r) {
 			r = validateElementList(r);
 			if (!r) return;
-			currentElementProp = { erase:r }
+			currentElementProp = { filter:r }
 		}, elemTitleCase(elements[element].name || element));
 	},
 	behavior: [
@@ -895,38 +900,14 @@ SEEDRISE: function(pixel) {
 	],
 	tool: function(pixel) {
 		if (tempTool === null) tempTool = {r:{}};
-		if (currentElementProp && currentElementProp.erase &&
-			currentElementProp.erase !== pixel.element &&
-			!currentElementProp.erase.split(",").includes(pixel.element)
+		if (currentElementProp && currentElementProp.filter &&
+			currentElementProp.filter !== pixel.element &&
+			!currentElementProp.filter.split(",").includes(pixel.element) &&
+			!currentElementProp.filter.split(",").includes(elements[pixel.element].state) &&
+			currentElement === "erase" &&
+			mouseType !== "right"
 		) return;
-		if (pixel._r) {
-			tempTool.r[pixel._r] = true;
-			removeFromRelation(pixel);
-		}
 		deletePixel(pixel.x,pixel.y);
-	},
-	onMouseUp: function(pixel) {
-		if (!tempTool || !tempTool.r) return;
-		for (let id in tempTool.r) {
-			const relation = getRelation(parseInt(id));
-			if (!relation || !relation.p) continue;
-
-			const groups = categorizePixels(relation.p);
-			console.log(groups);
-			if (groups.length < 2) return;
-
-			relation.p = groups[0];
-			for (let i = 1; i < groups.length; i++) {
-				const p = groups[i];
-				const rid = currentRelations._id;
-				currentRelations._id ++;
-				p.forEach(pixel => {
-					removeFromRelation(pixel);
-					pixel._r = rid;
-				});
-				getRelation(rid);
-			}
-		}
 	},
 	category: "tools",
 	canPlace: false,
@@ -957,10 +938,14 @@ SEEDRISE: function(pixel) {
 		dragStart = null;
 		draggingPixels = null;
 	},
+	onSelect: function() {
+		elements.drag.onMouseUp();
+	},
 	onUnselect: function() {
 		elements.drag.onMouseUp();
 	},
 	perTick: function() {
+		currentCursorType = mouseIsDown ? "grabbing" : "grab";
 		if (!draggingPixels) { return; }
 		shuffleArray(draggingPixels);
 		draggingPixels.sort((pixel1, pixel2) => {
@@ -1008,6 +993,13 @@ SEEDRISE: function(pixel) {
 		}
 		}
 	},
+	renderTool: function(ctx) {
+		if (paused && draggingPixels && draggingPixels.length) {
+			draggingPixels.forEach((pixel) => {
+				drawSquare(ctx,mouseColor,pixel.x,pixel.y,undefined,0.5);
+			})
+		}
+	},
 	rotatable: true,
 	category: "tools",
 	canPlace: false,
@@ -1030,6 +1022,7 @@ SEEDRISE: function(pixel) {
 			delete currentElementProp.y;
 		}
 		mouseIsDown = false;
+		return false;
 	},
 	behavior: [
 		"CF|CF|CF",
@@ -1049,7 +1042,9 @@ SEEDRISE: function(pixel) {
 		"SW|DL%5|SW",
 		"SW|SW|SW"
 	],
-	tool: function(pixel){},
+	tool: function(pixel){
+
+	},
 	category: "tools",
 	darkText: true,
 	canPlace: false,
@@ -1116,17 +1111,22 @@ SEEDRISE: function(pixel) {
 "lookup": {
 	color: ["#5e807d","#5e807d","#679e99","#5e807d","#5e807d"],
 	behavior: behaviors.WALL,
+	onSelect: function() {
+		currentCursorType = "help";
+	},
 	tool: function(pixel) {
 		if (mouseSize === 1) showInfo(pixel.element);
 		else if (!lookupTempElements[pixel.element]) lookupTempElements[pixel.element] = true;
+		return false;
 	},
 	onMouseDown: function() {
 		lookupTempElements = {};
 	},
 	onMouseUp: function() {
+		if (mouseSize !== 1) closeMenu();
 		if (Object.keys(lookupTempElements).length === 0) { return; }
 		if (Object.keys(lookupTempElements).length === 1) { showInfo(Object.keys(lookupTempElements)[0]) }
-		else { showInfo(Object.keys(lookupTempElements).join(",")) }
+		else { showInfo(Object.keys(lookupTempElements)) }
 		lookupTempElements = {};
 	},
 	category: "tools",
@@ -1218,7 +1218,7 @@ SEEDRISE: function(pixel) {
 		"cyanide": { elem1: "dirty_water", elem2: null },
 		"cyanide_gas": { elem1: "dirty_water", elem2: null },
 		"carbon_dioxide": { elem1: "seltzer", elem2: null, oneway:true },
-		"sulfur": { elem1: "dirty_water", elem2: null },
+		"sulfur": { elem1: "foam", elem2: null, attr1:{"clone":"dirty_water", "foam":3} },
 		"rat": { elem1: "dirty_water", chance:0.005 },
 		"infection": { elem1: "dirty_water", elem2: null },
 		"plague": { elem1: "dirty_water", elem2: null },
@@ -1240,6 +1240,9 @@ SEEDRISE: function(pixel) {
 		"rock": { elem2: "wet_sand", chance: 0.00035 },
 		"limestone": { elem2: "wet_sand", chance: 0.00035 },
 		"tuff": { elem2: "wet_sand", color2:"#7a6b5c", chance: 0.00035 },
+		"cinnabar": { elem2: "wet_sand", color2:"#a14f48", chance: 0.00035 },
+		"sandstone": { elem2: "wet_sand", chance: 0.00035 },
+		"mudstone": { elem2: "mud", chance: 0.00035 },
 		"ruins": { elem2: "rock", chance: 0.00035 },
 		"mudstone": { elem2: "mud", chance: 0.00035 },
 		"methane": { elem1:"primordial_soup", elem2:"primordial_soup", tempMin:60, charged:true },
@@ -1280,7 +1283,7 @@ SEEDRISE: function(pixel) {
 		"dust": { elem1: "dirty_water", elem2: null },
 		"ash": { elem1: "dirty_water", elem2: null },
 		"carbon_dioxide": { elem1: "seltzer", elem2: null },
-		"sulfur": { elem1: "dirty_water", elem2: null },
+		"sulfur": { elem1: "foam", elem2: null, attr1:{"clone":"dirty_water", "foam":3} },
 		"cyanide": { elem1: "dirty_water", elem2: null },
 		"rat": { elem1: "dirty_water", chance:0.005 },
 		"infection": { elem1: "dirty_water", elem2: null },
@@ -1292,6 +1295,10 @@ SEEDRISE: function(pixel) {
 		"solder": { elem1: "dirty_water", chance:0.005 },
 		"rock": { elem2: "wet_sand", chance: 0.0005 },
 		"limestone": { elem2: "wet_sand", chance: 0.0005 },
+		"tuff": { elem2: "wet_sand", color2:"#7a6b5c", chance: 0.0005 },
+		"cinnabar": { elem2: "wet_sand", color2:"#a14f48", chance: 0.0005 },
+		"sandstone": { elem2: "wet_sand", chance: 0.0005 },
+		"mudstone": { elem2: "mud", chance: 0.0005 },
 		"fly": { elem2:"dead_bug", chance:0.1, oneway:true },
 		"firefly": { elem2:"dead_bug", chance:0.1, oneway:true },
 		"bee": { elem2:"dead_bug", chance:0.05, oneway:true },
@@ -1337,7 +1344,7 @@ SEEDRISE: function(pixel) {
 		"ash": { elem1: "dirty_water", elem2: null },
 		"carbon_dioxide": { elem1: "soda", elem2: null },
 		"cyanide": { elem1: "dirty_water", elem2: null },
-		"sulfur": { elem1: "dirty_water", elem2: null },
+		"sulfur": { elem1: "foam", elem2: null, attr1:{"clone":"dirty_water", "foam":3} },
 		"charcoal": { elem1: "dirty_water", chance:0.005 },
 		"rat": { elem1: "dirty_water", chance:0.005 },
 		"infection": { elem1: "dirty_water", elem2: null },
@@ -1349,6 +1356,10 @@ SEEDRISE: function(pixel) {
 		"solder": { elem1: "dirty_water", chance:0.005 },
 		"rock": { elem2: "wet_sand", chance: 0.0004 },
 		"limestone": { elem2: "wet_sand", chance: 0.0004 },
+		"tuff": { elem2: "wet_sand", color2:"#7a6b5c", chance: 0.0004 },
+		"cinnabar": { elem2: "wet_sand", color2:"#a14f48", chance: 0.0004 },
+		"sandstone": { elem2: "wet_sand", chance: 0.0004 },
+		"mudstone": { elem2: "mud", chance: 0.0004 },
 		"fly": { elem2:"dead_bug", chance:0.1, oneway:true },
 		"firefly": { elem2:"dead_bug", chance:0.1, oneway:true },
 		"bee": { elem2:"dead_bug", chance:0.05, oneway:true },
@@ -1392,6 +1403,10 @@ SEEDRISE: function(pixel) {
 	reactions: {
 		"rock": { elem2: "wet_sand", chance: 0.0004 },
 		"limestone": { elem2: null, chance: 0.0004 },
+		"tuff": { elem2: "wet_sand", color2:"#7a6b5c", chance: 0.0004 },
+		"cinnabar": { elem2: "wet_sand", color2:"#a14f48", chance: 0.0004 },
+		"sandstone": { elem2: "wet_sand", chance: 0.0004 },
+		"mudstone": { elem2: "mud", chance: 0.0004 },
 		"sugar": { elem1: "soda", elem2: "foam" },
 		"sugar_water": { elem1: "soda", elem2: "foam" },
 		"cyanide": { elem1: "dirty_water", elem2: null },
@@ -1410,6 +1425,8 @@ SEEDRISE: function(pixel) {
 		"coral": { elem1:"water" },
 		"uranium": { elem1: "dirty_water", chance:0.25 },
 		"seltzer": { elem2:"bubble", attr2:{"clone":"seltzer"}, chance:0.001, tempMin:85 },
+		"dna": { elem1:"primordial_soup", elem2:null, charged:true },
+		"primordial_soup": { elem1:"primordial_soup", charged:true, chance:0.01 },
 		// electrolysis:
 		"aluminum": { elem1:["hydrogen","hydrogen","oxygen","carbon_dioxide"], charged:true, chance:0.0025 },
 		"zinc": { elem1:["hydrogen","hydrogen","oxygen","carbon_dioxide"], charged:true, chance:0.015 },
@@ -1443,6 +1460,10 @@ SEEDRISE: function(pixel) {
 	reactions: {
 		"rock": { elem2: "wet_sand", chance: 0.0004 },
 		"limestone": { elem2: "wet_sand", chance: 0.0004 },
+		"tuff": { elem2: "wet_sand", color2:"#7a6b5c", chance: 0.0004 },
+		"cinnabar": { elem2: "wet_sand", color2:"#a14f48", chance: 0.0004 },
+		"sandstone": { elem2: "wet_sand", chance: 0.0004 },
+		"mudstone": { elem2: "mud", chance: 0.0004 },
 		"plant": { elem1:"water", chance:0.05 },
 		"algae": { elem1:"water", chance:0.05 },
 		"kelp": { elem1:"water", chance:0.05 },
@@ -1473,6 +1494,10 @@ SEEDRISE: function(pixel) {
 	reactions: {
 		"rock": { elem2: "wet_sand", chance: 0.001 },
 		"limestone": { elem2: "wet_sand", chance: 0.001 },
+		"tuff": { elem2: "wet_sand", color2:"#7a6b5c", chance: 0.001 },
+		"cinnabar": { elem2: "wet_sand", color2:"#a14f48", chance: 0.001 },
+		"sandstone": { elem2: "wet_sand", chance: 0.001 },
+		"mudstone": { elem2: "mud", chance: 0.001 },
 		"plant": { elem2:"dead_plant", chance:0.05 },
 		"evergreen": { elem2:"dead_plant", chance:0.05 },
 		"cactus": { elem2:"dead_plant", chance:0.05 },
@@ -1547,6 +1572,8 @@ SEEDRISE: function(pixel) {
 		"infection":{elem1:"mud",elem2:null},
 		"poison":{elem1:"mud",elem2:null},
 		"antidote":{elem1:"mud",elem2:null},
+		"coral":{elem1:"sand", elem2:"sand", chance:0.1, oneway:true},
+		"quicklime":{elem1:"sand", elem2:"sand", chance:0.1},
 		"bone": { elem1:"rock", chance:0.001, oneway:true }
 	},
 	tempHigh:1200,
@@ -1589,15 +1616,16 @@ SEEDRISE: function(pixel) {
 		"gravel": { elem1:"cement", elem2:null, chance:0.2 }
 	},
 	tempHigh: 100,
-	stateHigh: "packed_sand",
+	stateHigh: "sandstone",
 	onStateHigh: function(pixel) {
 		releaseElement(pixel,"steam");
 	},
 	tempLow: -50,
-	stateLow: "packed_sand",
+	stateLow: "sandstone",
 	category: "land",
 	state: "solid",
-	density: 1905
+	density: 1905,
+	hidden: true
 },
 "rock": {
 	color: ["#808080","#4f4f4f","#949494"],
@@ -1613,8 +1641,8 @@ SEEDRISE: function(pixel) {
 		"bone": { elem2:"oil", tempMin:300, chance:0.005, oneway:true },
 		"dead_plant": { elem2:"charcoal", tempMin:200, chance:0.005, oneway:true },
 		"charcoal": { elem2:"diamond", tempMin:800, tempMax:900, chance:0.005, oneway:true },
-		"sand": { elem2:"packed_sand", tempMin:500, chance:0.005, oneway:true },
-		"wet_sand": { elem2:"packed_sand", chance:0.005, oneway:true }
+		"sand": { elem2:"sandstone", tempMin:500, chance:0.005, oneway:true },
+		"wet_sand": { elem2:"sandstone", chance:0.005, oneway:true }
 	},
 	tempHigh: 950,
 	stateHigh: "magma",
@@ -1649,6 +1677,16 @@ SEEDRISE: function(pixel) {
 	hardness: 0.5,
 	breakInto: "rock"
 },
+"sandstone": {
+	color: ["#c29e7e","#ca9a6e","#b8834e","#a17142"],
+	behavior: behaviors.SUPPORT,
+	tempHigh: 1650,
+	stateHigh: ["molten_glass","molten_glass","molten_glass","molten_glass","molten_glass","magma"],
+	category: "land",
+	state: "solid",
+	density: 2185,
+	breakInto: "sand"
+},
 "mudstone": {
 	color: "#4a341e",
 	behavior: behaviors.SUPPORT,
@@ -1660,16 +1698,6 @@ SEEDRISE: function(pixel) {
 	state: "solid",
 	density: 1250,
 	breakInto: "dirt"
-},
-"packed_sand": {
-	color: ["#a1975d","#b5ab70"],
-	behavior: behaviors.SUPPORT,
-	tempHigh:1700,
-	stateHigh: "molten_glass",
-	category: "land",
-	state: "solid",
-	density: 1682,
-	breakInto: "sand"
 },
 "plant": {
 	color: "#00bf00",
@@ -1774,7 +1802,7 @@ SEEDRISE: function(pixel) {
 	category:"life",
 	state: "solid",
 	density: 1400,
-	seed: "grass_seed"
+	seed: "grass"
 },
 "algae": {
 	color: ["#395706","#6f9315","#9dca19"],
@@ -1839,7 +1867,6 @@ SEEDRISE: function(pixel) {
 	category: "solids",
 	insulate: true,
 	hardness: 1,
-	noMix: true,
 	alias: "solid",
 	density: 20000
 },
@@ -1956,7 +1983,8 @@ SEEDRISE: function(pixel) {
 		"iron": { elem1:"oxygen", elem2:"rust", chance:0.005 },
 		"steel": { elem1:"oxygen", elem2:"rust", chance:0.004 },
 		"tornado":{elem1:"cloud"},
-		"melted_wax": { elem1:"explosion" }
+		"melted_wax": { elem1:"explosion" },
+		"methane": { elem1:"hydrogen", tempMin:150 }
 	},
 	temp: 150,
 	tempLow: 95,
@@ -2181,7 +2209,6 @@ SEEDRISE: function(pixel) {
 	state: "solid",
 	density: 2500,
 	breakInto: "glass_shard",
-	noMix: true,
 	grain: 0
 },
 "molten_glass": {
@@ -2232,7 +2259,6 @@ SEEDRISE: function(pixel) {
 	density: 2500,
 	breakInto: "rad_shard",
 	hidden: true,
-	noMix: true,
 	grain: 0.3
 },
 "meat": {
@@ -2415,7 +2441,18 @@ SEEDRISE: function(pixel) {
 "molten_salt": {
 	conduct: 0.1,
 	reactions: {
-		"water": { elem1:"explosion" }
+		"water": { elem1:"explosion" },
+		// electrolysis:
+		"aluminum": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.0025 },
+		"zinc": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.015 },
+		"steel": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.0125 },
+		"iron": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.0125 },
+		"tin": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.01 },
+		"brass": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.001 },
+		"bronze": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.001 },
+		"copper": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.0075 },
+		"silver": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.0075 },
+		"gold": { elem1:["molten_sodium","chlorine"], charged:true, chance:0.0075 }
 	},
 	alias: "molten sodium chloride"
 },
@@ -2473,7 +2510,6 @@ SEEDRISE: function(pixel) {
 	category: "machines",
 	insulate: true,
 	conduct: 1,
-	noMix: true,
 	density: 8960,
 	// ignoreConduct:["ecloner"]
 },
@@ -2555,7 +2591,7 @@ SEEDRISE: function(pixel) {
 		doDefaults(pixel);
 	},
 	hoverStat: function(pixel) { return (pixel.sense || "").toUpperCase() },
-	ignore: ["flash"],
+	ignore: [],
 	conduct: 1,
 	movable: false,
 	category:"machines",
@@ -2636,9 +2672,12 @@ SEEDRISE: function(pixel) {
 			if (!r) return;
 			currentElementProp = { imageelem:r };
 			settings.imageelem = r;
+			shiftDown = false;
+			elements.image.onSelect();
 		}, elemTitleCase(elements[element].name || element), settings.imageelem || "wood");
 	},
 	onSelect: function() {
+		if (shiftDown) return;
 		// prompt to upload an image file, then store the image in placingImage
 		var file = document.createElement("input");
 		file.type = "file";
@@ -2658,7 +2697,7 @@ SEEDRISE: function(pixel) {
 			},500);
 		}
 		file.oncancel = function() {
-			selectElement(null);
+			selectElement("unknown");
 		}
 		file.click();
 	},
@@ -2684,6 +2723,7 @@ SEEDRISE: function(pixel) {
 		}
 	},
 	onSelect: function(){
+		currentCursorType = "text";
 		if (typeof lastTextDisplay !== "undefined") currentElementProp = {text: lastTextDisplay};
 		promptInput("Enter text to display.", (text) => {
 			text = text || "";
@@ -2694,6 +2734,10 @@ SEEDRISE: function(pixel) {
 
 			lastTextDisplay = text;
 			currentElementProp = {text: text};
+
+			if (!viewInfo[view].effects) {
+				logMessage(viewInfo[view].name.toUpperCase() + " view does not support text displays.");
+			}
 		}, "Text", typeof lastTextDisplay === "undefined" ? undefined : lastTextDisplay);
 	},
 	renderer: function(pixel,ctx) {
@@ -2807,7 +2851,8 @@ SEEDRISE: function(pixel) {
 	hardness: 1,
 	movable: false,
 	conduct: 1,
-	excludeRandom: true
+	excludeRandom: true,
+	forceSaveColor: true
 },
 "ruler": {
 	color: ["#C99255","#B6894C"],
@@ -2904,10 +2949,185 @@ SEEDRISE: function(pixel) {
 			ctx.fillText(value, x * pixelSize, y * pixelSize);
 		}
 	},
-	tool: function() {},
+	tool: function() { return false; },
 	category: "edit",
 	maxSize: 1,
 	desc: "Use to measure lengths and angles on the canvas."
+},
+"select": {
+	color: "#f2fa7b",
+	onMouseDown: function() {
+		currentElementProp = {startX: mousePos.x, startY: mousePos.y};
+		shaping = 2;
+	},
+	onMouseUp: function() {
+		shaping = 0;
+		if (!currentElementProp) return;
+		currentElementProp.endX = mousePos.x;
+		currentElementProp.endY = mousePos.y;
+		if (currentElementProp.startX === currentElementProp.endX && currentElementProp.startY === currentElementProp.endY) {
+			currentElementProp = null;
+			disableElement("copy");
+			disableElement("cut");
+			return;
+		}
+		enableElement("copy");
+		enableElement("cut");
+	},
+	onSelect: function() {
+		if (!currentElementProp) return;
+		enableElement("copy");
+		enableElement("cut");
+	},
+	onUnselect: function(newElement) {
+		if (currentElementProp && elements[newElement].tool && newElement !== "unknown") {
+			historyLog();
+			let pixels = selectionArray(currentElementProp.startX, currentElementProp.startY, currentElementProp.endX??mousePos.x, currentElementProp.endY??mousePos.y);
+			let affected = 0;
+			if (elements[newElement].onMouseDown) elements[newElement].onMouseDown();
+			pixels.forEach(pixel => {
+				if (elements[newElement].tool(pixel) !== false) affected++;
+			});
+			if (elements[newElement].onMouseUp) elements[newElement].onMouseUp();
+			if (elements[newElement].onUnselect) elements[newElement].onUnselect("select");
+			editingPixels = [];
+			if (!affected) historyPop();
+			else return false;
+			disableElement("copy");
+			disableElement("cut");
+		}
+		disableElement("copy");
+		disableElement("cut");
+	},
+	renderTool: function(ctx) {
+		if (!currentElementProp) return;
+
+		if (mouseIsDown && mouseType === "left") {
+			currentElementProp.endX = mousePos.x;
+			currentElementProp.endY = mousePos.y;
+		}
+
+		currentElementProp.endX = Math.max(currentElementProp.endX, currentSaveData.border);
+		currentElementProp.endY = Math.max(currentElementProp.endY, currentSaveData.border);
+		currentElementProp.endX = Math.min(currentElementProp.endX, width-currentSaveData.border);
+		currentElementProp.endY = Math.min(currentElementProp.endY, height-currentSaveData.border);
+
+		let done = {};
+		let coords = [
+			...lineCoords(currentElementProp.startX, currentElementProp.startY, currentElementProp.endX, currentElementProp.startY, 1),
+			...lineCoords(currentElementProp.startX, currentElementProp.startY, currentElementProp.startX, currentElementProp.endY, 1),
+			...lineCoords(currentElementProp.endX, currentElementProp.startY, currentElementProp.endX, currentElementProp.endY, 1),
+			...lineCoords(currentElementProp.startX, currentElementProp.endY, currentElementProp.endX, currentElementProp.endY, 1),
+		];
+
+		// for (let x = tempTool.startX; x <= mousePos.x; x++) {
+		// 	coords.push([x, tempTool.startY])
+		// }
+
+		let pixels = selectionArray(currentElementProp.startX, currentElementProp.startY, currentElementProp.endX, currentElementProp.endY);
+		pixels.forEach((pixel) => {
+			drawSquare(ctx,mouseColor,pixel.x,pixel.y,undefined, Math.abs(Math.sin(Date.now() / 500) + 0.1) * 0.4);
+		});
+
+		for (let i = 0; i < coords.length; i++) {
+			const coord = coords[i];
+			if (done[coord[0] + "," + coord[1]]) continue;
+			done[coord[0] + "," + coord[1]] = true;
+			
+			let color = i % 2 ? "#808080" : "#ffff00";
+			// let color = (i + (mouseIsDown ? 0 : (Math.floor(Date.now() / 500) % 2))) % 2 ? "#808080" : "#ffff00";
+			drawSquare(ctx, color, coord[0], coord[1], undefined, 0.75);
+		}
+	},
+	tool: function() { return false; },
+	category: "edit",
+	maxSize: 1,
+},
+"copy": {
+	color: "#c4ff86",
+	onSelect: function() {
+		if (prevElement !== "select" || !prevElementProp) return;
+
+		let stamp = generateSave(undefined, {
+			startX: prevElementProp.startX,
+			startY: prevElementProp.startY,
+			endX: prevElementProp.endX,
+			endY: prevElementProp.endY,
+			strip: true,
+			keep: ["temp","color"]
+		});
+		currentClipboard = [stamp];
+
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(JSON.stringify(stamp));
+		}
+
+		selectPrevElement();
+		enableElement("copy");
+		enableElement("cut");
+		enableElement("paste");
+	},
+	tool: function() { return false; },
+	category: "edit",
+	disabled: true
+},
+"cut": {
+	color: "#ffb778",
+	onSelect: function() {
+		if (prevElement !== "select" || !prevElementProp) return;
+
+		historyLog();
+		
+		elements.copy.onSelect();
+
+		let pixels = selectionArray(currentElementProp.startX, currentElementProp.startY, currentElementProp.endX, currentElementProp.endY);
+		pixels.forEach((pixel) => {
+			deletePixel(pixel.x, pixel.y);
+		});
+	},
+	tool: function() { return false; },
+	category: "edit",
+	disabled: true
+},
+"paste": {
+	color: "#d0b6ff",
+	onSelect: function() {
+		if (!currentClipboard || !currentClipboard.length) return;
+		if (placingStamp) return;
+
+		loadSave(currentClipboard[0]);
+	},
+	onUnselect: function(element) {
+		if (element === "paste") return;
+		placingStamp = null;
+	},
+	renderTool: function(ctx) {
+		if (!placingStamp) return;
+
+		// if (ctx.globalAlpha !== opacity) ctx.globalAlpha = opacity;
+		// ctx.fillRect(canvasCoord(x), canvasCoord(y), pixelSize*scale, pixelSize*scale);
+
+		ctx.fillStyle = "rgb(0,0,0)";
+		ctx.globalAlpha = 0.2;
+		ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+		let stampWidth = placingStamp.length;
+		let stampHeight = placingStamp[0].length;
+		let startX = Math.round(mousePos.x - (stampWidth/2));
+		let startY = Math.round(mousePos.y - (stampHeight/2));
+
+		for (var x = 0; x < placingStamp.length; x++) {
+			for (var y = 0; y < placingStamp[x].length; y++) {
+				const pixel = placingStamp[x][y];
+				if (!pixel) continue;
+				drawSquare(ctx, pixel.color||"rgb(127,127,127)", startX+x, startY+y, undefined, 0.75);
+				drawSquare(ctx,"rgb(255,255,255)",startX+x, startY+y,undefined, Math.abs(Math.sin(Date.now() / 500) + 0.1) * 0.4);
+			}
+		}
+	},
+	tool: function() { return false; },
+	category: "edit",
+	disabled: true
 },
 "group": {
 	color: "#75ffef",
@@ -2982,6 +3202,17 @@ SEEDRISE: function(pixel) {
 	},
 	category: "edit",
 	desc: "Use to remove pixels from a structure."
+},
+"mask": {
+	color: ["#8a6c3f","#6b4e29"],
+	tool: function(pixel) {
+		if (pixel.element === "fuse") return;
+		deletePixel(pixel.x, pixel.y);
+		createPixel("fuse", pixel.x, pixel.y);
+		let newPixel = pixelMap[pixel.x][pixel.y];
+		newPixel.con = pixel;
+	},
+	category: "edit",
 },
 "unpaint": {
 	color: ["#ffffff","#000000"],
@@ -3113,7 +3344,7 @@ SEEDRISE: function(pixel) {
 			var y = pixel.y+adjacentCoords[i][1];
 			if (!isEmpty(x,y,true)) {
 				var newPixel = pixelMap[x][y];
-				if (pixel.filter && !(pixel.filter === newPixel.element || pixel.filter.split(",").includes(newPixel.element))) continue;
+				if (pixel.filter && !(pixel.filter === newPixel.element || pixel.filter.split(",").includes(newPixel.element) || pixel.filter.split(",").includes(elements[newPixel.element].state))) continue;
 				if (elements[newPixel.element].hardness === 1) { continue; }
 				deletePixel(x,y);
 			}
@@ -3182,7 +3413,6 @@ SEEDRISE: function(pixel) {
 	state: "gas",
 	density: 1408,
 	insulate: true,
-	noMix: true,
 	alias: "star",
 	movable: false
 },
@@ -3439,8 +3669,14 @@ SEEDRISE: function(pixel) {
 		"infection": { elem1:"infection", chance:0.015 },
 		"blood": { elem1:"blood", chance:0.01 },
 		"antibody": { elem1:"antibody", chance:0.01 },
-		"sugar": { elem2:"cell", chance:0.03 },
-		"sugar_water": { elem2:"cell", chance:0.04 },
+		"cellulose": { elem1:"plant", elem2:"plant", chance:0.01 },
+		"sawdust": { elem1:"wood", elem2:"wood", chance:0.01 },
+		"calcium": { elem1:"bone", elem2:"bone", chance:0.01 },
+		"quicklime": { elem1:"bone", elem2:"bone", chance:0.01 },
+		"sugar": { elem2:"cell", chance:0.03, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
+		"sugar_water": { elem2:"cell", chance:0.04, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
+		"juice": { elem2:"cell", chance:0.035, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
+		"molasses": { elem2:"cell", chance:0.035, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
 		"alcohol": { elem1:[null,"dna"], chance:0.02 },
 		"poison": { elem1:null, chance:0.02 },
 		"plague": { elem1:null, chance:0.02 },
@@ -3489,8 +3725,10 @@ SEEDRISE: function(pixel) {
 		"bone": { elem2:"cancer", chance:0.005 },
 		"bone_marrow": { elem2:"cancer", chance:0.005 },
 		"skin": { elem2:"cancer", chance:0.005 },
-		"sugar": { elem2:"cancer", chance:0.04 },
-		"sugar_water": { elem2:"cancer", chance:0.05 },
+		"sugar": { elem2:"cancer", chance:0.04, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
+		"sugar_water": { elem2:"cancer", chance:0.05, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
+		"juice": { elem2:"cancer", chance:0.045, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
+		"molasses": { elem2:"cancer", chance:0.045, func:function(pixel){ releaseElement(pixel, "carbon_dioxide") } },
 		"alcohol": { elem1:[null,"dna"], chance:0.01 },
 		"poison": { elem1:null, chance:0.01 },
 		"plant": { elem2:["dead_plant",null], chance:0.005 },
@@ -3507,7 +3745,6 @@ SEEDRISE: function(pixel) {
 	category: "life",
 	breakInto: "dna",
 	breakIntoColor: ["#c9b7b7","#c9c6b7","#c9c6b7","#b7c8c9","#c9b7c5"],
-	nocheer: true,
 	hidden: true
 },
 "plague": {
@@ -3540,7 +3777,8 @@ SEEDRISE: function(pixel) {
 	reactions: {
 		"fire": { elem2:null },
 		"radiation": { "color1":["#ffe3e3","#e3e3ff","#ffffe3","#e3ffe3"] },
-		"neutron": { "color1":["#ffe3e3","#e3e3ff","#ffffe3","#e3ffe3"] }
+		"neutron": { "color1":["#ffe3e3","#e3e3ff","#ffffe3","#e3ffe3"] },
+		"cellulose": { elem1:"plant", elem2:"plant" },
 	},
 	tempHigh: 190,
 	stateHigh: "smoke",
@@ -3599,12 +3837,14 @@ SEEDRISE: function(pixel) {
 		"mudstone": { elem2:"dirt", chance:0.1 },
 		"adobe": { elem2:"dirt", chance:0.01, func:behaviors.FEEDPIXEL },
 		"permafrost": { elem2:"dirt", chance:0.1 },
-		"packed_sand": { elem2:"sand", chance:0.1 },
+		"sandstone": { elem2:"sand", chance:0.1 },
 		"lichen": { elem2:"dirt", chance:0.0025 },
 		"salt": { elem1: "slime", elem2: null },
 		"potassium_salt": { elem1: "slime", elem2: null },
 		"epsom_salt": { elem1: "slime", elem2: null },
-		"alcohol": { elem1:null, chance:0.005 }
+		"alcohol": { elem1:null, chance:0.005 },
+		"glass_shard": { elem2:"sand", chance:0.005 },
+		"rad_shard": { elem2:"sand", color2:"#c8e677", chance:0.005 }
 	},
 	tempHigh: 100,
 	stateHigh: "ash",
@@ -3892,7 +4132,9 @@ SEEDRISE: function(pixel) {
 		"bread": { elem2:null, chance:0.1, func:behaviors.FEEDPIXEL },
 		"sugar_water": { elem2:null, chance:0.15, func:behaviors.FEEDPIXEL },
 		"honey": { elem2:null, chance:0.15, func:behaviors.FEEDPIXEL },
-		"soda": { elem2:null, chance:0.15, func:behaviors.FEEDPIXEL }
+		"soda": { elem2:null, chance:0.15, func:behaviors.FEEDPIXEL },
+		"blood": { elem2:"infection", chance:0.15, func:behaviors.FEEDPIXEL },
+		"infection": { elem2:null, chance:0.15, func:behaviors.FEEDPIXEL }
 	},
 	foodNeed: 15,
 	tempHigh: 100,
@@ -4253,7 +4495,9 @@ SEEDRISE: function(pixel) {
 		"gunpowder": { attr1:{panic:5} },
 		"acid": { attr1:{panic:5} },
 		"acid_gas": { attr1:{panic:5} },
-		"stench": { attr1:{panic:2} }
+		"stench": { attr1:{panic:2} },
+		"spider": { attr1:{panic:2} },
+		"bee": { attr1:{panic:2} }
 	},
 	related: ["body","head"],
 	cooldown: defaultCooldown,
@@ -4294,7 +4538,6 @@ SEEDRISE: function(pixel) {
 		"termite": { elem2:"dead_bug", oneway:true },
 		"worm": { elem2:"slime", chance:0.05, oneway:true },
 		"stink_bug": { elem2:"stench", oneway:true },
-		"grass_seed": { elem2:null, chance:0.05 },
 		"gold_coin": { elem2:null, chance:0.05 },
 		"diamond": { elem2:null, chance:0.05 },
 		"sun": { elem1:"cooked_meat" },
@@ -4615,7 +4858,6 @@ SEEDRISE: function(pixel) {
 		"corn_seed": { elem2:null, chance:0.25, func:behaviors.FEEDPIXEL },
 		"corn": { elem2:null, chance:0.25, func:behaviors.FEEDPIXEL },
 		"potato_seed": { elem2:null, chance:0.25, func:behaviors.FEEDPIXEL },
-		"grass_seed": { elem2:null, chance:0.25, func:behaviors.FEEDPIXEL },
 		"crumb": { elem2:null, chance:0.25, func:behaviors.FEEDPIXEL },
 		"pumpkin": { elem2:null, chance:0.025, func:behaviors.FEEDPIXEL },
 		"pumpkin_seed": { elem2:null, chance:0.25, func:behaviors.FEEDPIXEL },
@@ -4668,7 +4910,6 @@ SEEDRISE: function(pixel) {
 		"vine": { elem2:null, chance:0.1, func:behaviors.FEEDPIXEL },
 		"evergreen": { elem2:null, chance:0.1, func:behaviors.FEEDPIXEL },
 		"algae": { elem2:null, chance:0.2, func:behaviors.FEEDPIXEL },
-		"grass_seed": { elem2:null, chance:0.3 , func:behaviors.FEEDPIXEL},
 		"wheat_seed": { elem2:null, chance:0.3, func:behaviors.FEEDPIXEL },
 		"wheat": { elem2:null, chance:0.2, func:behaviors.FEEDPIXEL },
 		"potato_seed": { elem2:null, chance:0.3, func:behaviors.FEEDPIXEL },
@@ -4919,7 +5160,6 @@ SEEDRISE: function(pixel) {
 		"grass": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"herb": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"lettuce": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
-		"grass_seed": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"algae": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"kelp": { elem2:"water", chance:0.05, func:behaviors.FEEDPIXEL },
 		"coral": { elem2:"water", chance:0.01, func:behaviors.FEEDPIXEL },
@@ -4969,7 +5209,6 @@ SEEDRISE: function(pixel) {
 		"grass": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"herb": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"lettuce": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
-		"grass_seed": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"algae": { elem2:null, chance:0.05, func:behaviors.FEEDPIXEL },
 		"kelp": { elem2:"water", chance:0.05, func:behaviors.FEEDPIXEL },
 		"coral": { elem2:"water", chance:0.01, func:behaviors.FEEDPIXEL },
@@ -5142,7 +5381,6 @@ SEEDRISE: function(pixel) {
 	color: "#586879",
 	behavior: behaviors.WALL,
 	category: "machines",
-	noMix: true,
 	hidden: true,
 	insulate: true
 },
@@ -5164,7 +5402,7 @@ SEEDRISE: function(pixel) {
 		}, elemTitleCase(elements[element].name || element));
 	},
 	onClicked: function(pixel,element) {
-		if (pixel.filter) return;
+		if (pixel.filter || !element) return;
 		if (elements[element].tool && elements[element].canPlace !== true) return;
 		if (elements[element].canPlace === false) return;
 		if (elements[element].movable) pixel.filter = element;
@@ -5188,15 +5426,17 @@ SEEDRISE: function(pixel) {
 					if (!newPixel.filter && pixel.filter) newPixel.filter = pixel.filter;
 					if (!pixel.filter && newPixel.filter) pixel.filter = newPixel.filter;
 				}
-				if (!elements[newPixel.element].movable) continue;
+				// if (!elements[newPixel.element].movable) continue;
 				if (!pixel.filter) {
+					if (!elements[newPixel.element].movable) continue;
 					pixel.filter = newPixel.element;
 				}
-				if (elements[newPixel.element].movable && (
+				if (
 					pixel.filter === newPixel.element ||
 					pixel.filter === elements[newPixel.element].state ||
-					(pixel.filter.match(/,/) && pixel.filter.split(",").includes(newPixel.element))
-				)) {
+					(pixel.filter.match(/,/) && pixel.filter.split(",").includes(newPixel.element)) ||
+					(pixel.filter === "any" && elements[newPixel.element].movable)
+				) {
 					if (!elements[newPixel.element].isGas && coord[1] > 0) continue;
 					pixel.con = newPixel;
 					deletePixel(newPixel.x,newPixel.y);
@@ -5368,7 +5608,6 @@ SEEDRISE: function(pixel) {
 		"MX|MX|MX"
 	],
 	category: "machines",
-	noMix: true,
 	darkText: true,
 	outline: false
 },
@@ -5380,12 +5619,12 @@ SEEDRISE: function(pixel) {
 		"MX|SM%8 AND MX|MX"
 	],
 	category: "machines",
-	noMix: true,
 	darkText: true,
 	outline: false
 },
 "fuse": {
 	color: "#825d38",
+	buttonColor: ["#8a6c3f","#6b4e29"],
 	onShiftSelect: function(element) {
 		promptInput("Enter an element to turn into once charged.", function(r) {
 			r = validateElementList(r);
@@ -5396,6 +5635,16 @@ SEEDRISE: function(pixel) {
 	tick: function(pixel) {
 		doDefaults(pixel);
 		if (pixel.charge < 1) {
+			if (pixel.con) {
+				let newPixel = pixel.con;
+				newPixel.x = pixel.x;
+				newPixel.y = pixel.y;
+				newPixel.del = undefined;
+				deletePixel(pixel.x, pixel.y);
+				pixelMap[newPixel.x][newPixel.y] = newPixel;
+				currentPixels.push(newPixel);
+				return;
+			}
 			changePixel(pixel,pixel.clone ? choose(pixel.clone.split(",")) : "flash");
 			pixel.charge = 0;
 		}
@@ -5420,7 +5669,6 @@ SEEDRISE: function(pixel) {
 	behavior: behaviors.WALL,
 	category: "machines",
 	hardness: 1,
-	noMix: true,
 	conduct: 1,
 	density: 20000
 },
@@ -5759,14 +6007,14 @@ SEEDRISE: function(pixel) {
 						pixel.color = pixelMap[newx][pixel.y].color;
 					}
 					pixel.flipX = !pixel.flipX;
-					if (!tryMove(pixel, newx, pixel.y+1) && !outOfBounds(newx, pixel.y+1) && !elements.liquid_light.reactions[pixelMap[newx][pixel.y+1].element]) {
+					if (!tryMove(pixel, newx, pixel.y+1) && !isEmpty(newx, pixel.y+1, true) && !elements.liquid_light.reactions[pixelMap[newx][pixel.y+1].element]) {
 						pixel.color = pixelMap[newx][pixel.y+1].color;
 					}
 				}
 			}
 			else {
 				if (!tryMove(pixel, newx, pixel.y+1)) {
-					if (!outOfBounds(newx, pixel.y+1) && !elements.liquid_light.reactions[pixelMap[newx][pixel.y+1].element]) {
+					if (!isEmpty(newx, pixel.y+1, true) && !elements.liquid_light.reactions[pixelMap[newx][pixel.y+1].element]) {
 						pixel.color = pixelMap[newx][pixel.y+1].color;
 					}
 					if (!tryMove(pixel, newx, pixel.y)) {
@@ -5858,7 +6106,8 @@ SEEDRISE: function(pixel) {
 		"poison": { elem2:"dirty_water", chance:0.02 },
 		"sulfur": { elem1:"gunpowder", elem2:"gunpowder", chance:0.02 },
 		"molten_sulfur": { elem1:"gunpowder", elem2:"gunpowder", chance:0.02 },
-		"dead_plant": { elem2:"charcoal", tempMin:200, chance:0.005, oneway:true }
+		"dead_plant": { elem2:"charcoal", tempMin:200, chance:0.005, oneway:true },
+		"hydrogen": { elem2:"oil", chance:0.1 },
 	},
 	renderer: renderPresets.CHARCOALHEAT,
 	burn: 25,
@@ -5872,7 +6121,8 @@ SEEDRISE: function(pixel) {
 	breakInto: ["ash","ash","carbon_dioxide"],
 	hardness: 0.5,
 	conduct: 0.001,
-	stain: 0.02
+	stain: 0.02,
+	alias: "coal"
 },
 "tinder": {
 	color: ["#917256","#87684f","#735f4a","#5d4c3e","#4b3a2e"],
@@ -5993,7 +6243,7 @@ SEEDRISE: function(pixel) {
 	behavior: behaviors.GAS,
 	reactions: {
 		"oxygen": { elem1:null, elem2:"anesthesia", tempMin:250 },
-		"hydrogen": { elem1:null, elem2:"ammonia" },
+		"hydrogen": { elem1:null, elem2:"ammonia", tempMax:600 },
 		"neon": { elem1:null, elem2:"chlorine", tempMin:10000 },
 		"proton": { elem1:"flash", color1:"#895adb", attr1:{delay:500}, elem2:"flash", color2:"#895adb", attr2:{delay:500}, chance:0.05, "y":[0,20] }
 	},
@@ -6039,7 +6289,6 @@ SEEDRISE: function(pixel) {
 		"bamboo_plant": { elem1:"oxygen" },
 		"vine": { elem1:"oxygen" },
 		"flower_seed": { elem1:"oxygen" },
-		"grass_seed": { elem1:"oxygen" },
 		"algae": { elem1:"oxygen" },
 		"kelp": { elem1:"oxygen" }
 	},
@@ -6079,7 +6328,7 @@ SEEDRISE: function(pixel) {
 "ammonia": {
 	color: "#bab6a9",
 	behavior: behaviors.GAS,
-	function(pixel) {
+	tick: function(pixel) {
 		if (pixel.temp > 650 && Math.random() < 0.01) {
 			changePixel(pixel,Math.random() < 0.5 ? "nitrogen" : "hydrogen");
 		}
@@ -6093,7 +6342,6 @@ SEEDRISE: function(pixel) {
 		"wheat": { elem1:"wheat", chance:0.05 },
 		"wheat_seed": { elem1:"wheat", chance:0.05 },
 		"grass": { elem1:"grass", chance:0.05 },
-		"grass_seed": { elem1:"grass", chance:0.05 },
 		"bamboo_plant": { elem1:"bamboo", chance:0.05 },
 		"flower_seed": { elem1:"flower_seed", chance:0.05 },
 		"petal": { elem1:"flower_seed", chance:0.05 },
@@ -6255,7 +6503,6 @@ SEEDRISE: function(pixel) {
 	state: "solid",
 	density: 2500,
 	breakInto: "color_sand",
-	noMix: true,
 	movable: false,
 	grain: 0
 },
@@ -6411,6 +6658,7 @@ SEEDRISE: function(pixel) {
 	behavior: behaviors.SUPPORT,
 	reactions: {
 		"dirt": { elem1:"clay_soil", elem2:"clay_soil" },
+		"sand": { elem1:"clay_soil", elem2:"clay_soil" },
 		"gravel": { elem1:"clay_soil", elem2:"clay_soil" },
 		"brick_rubble": { elem1:"clay_soil", elem2:"clay_soil" },
 		"quicklime": { elem1:"cement", elem2:"cement" }
@@ -6882,28 +7130,6 @@ SEEDRISE: function(pixel) {
 	cooldown: defaultCooldown,
 	seed: true
 },
-"grass_seed": {
-	color: ["#439809","#258b08","#118511","#127b12","#136d14"],
-	behavior: [
-		"XX|M2%0.05|XX",
-		"XX|L2:grass|XX",
-		"XX|M1|XX"
-	],
-	tick: behaviors.SEEDRISE,
-	tempHigh: 100,
-	stateHigh: "dead_plant",
-	tempLow: -2,
-	stateLow: "frozen_plant",
-	burn: 50,
-	burnTime: 20,
-	category: "life",
-	state: "solid",
-	density: 1400,
-	breakInto: null,
-	hidden: true,
-	cooldown: defaultCooldown,
-	seed: true
-},
 "wheat_seed": {
 	color: "#b6c981",
 	behavior: [
@@ -6946,8 +7172,7 @@ SEEDRISE: function(pixel) {
 	state: "solid",
 	density: 2403,
 	hardness: 0.4,
-	breakInto: "porcelain_shard",
-	noMix: true
+	breakInto: "porcelain_shard"
 },
 "paper": {
 	color: "#f0f0f0",
@@ -7412,7 +7637,7 @@ SEEDRISE: function(pixel) {
 		"brick_rubble": {elem1:null, elem2:"brick"},
 		"bead": {elem1:null, elem2:"plastic"},
 		"dirt": {elem1:null, elem2:"mudstone"},
-		"sand": {elem1:null, elem2:"packed_sand"},
+		"sand": {elem1:null, elem2:"sandstone"},
 		"crumb": {elem1:null, elem2:"bread"},
 		"fly": {elem2:"dead_bug"},
 		"firefly": {elem2:"dead_bug"},
@@ -7776,7 +8001,6 @@ SEEDRISE: function(pixel) {
 		"evergreen": { elem2:"dirt", chance:0.07 },
 		"root": { elem2:"dirt", chance:0.07 },
 		"grass": { elem2:"dirt", chance:0.08 },
-		"grass_seed": { elem2:"dirt", chance:0.08 },
 		"epsom_salt": { elem1:null, chance:0.1 }
 	},
 	category: "life",
@@ -7804,7 +8028,6 @@ SEEDRISE: function(pixel) {
 		"evergreen": { elem2:"dirt", chance:0.07 },
 		"root": { elem2:"dirt", chance:0.07 },
 		"grass": { elem2:"dirt", chance:0.08 },
-		"grass_seed": { elem2:"dirt", chance:0.08 },
 		"ash": { elem2:"dirt", chance:0.04 },
 		"water": { elem2:"broth", tempMin:70, color2:["#CC9978","#CD8C6F","#BE785E"] },
 		"salt_water": { elem2:"broth", tempMin:70, color2:["#CC9978","#CD8C6F","#BE785E"] },
@@ -7910,7 +8133,6 @@ SEEDRISE: function(pixel) {
 		"evergreen": { elem2:"dirt", chance:0.07 },
 		"root": { elem2:"dirt", chance:0.07 },
 		"grass": { elem2:"dirt", chance:0.08 },
-		"grass_seed": { elem2:"dirt", chance:0.08 },
 		"ash": { elem2:"dirt", chance:0.04 },
 		"water": { elem2:"broth", tempMin:70, color2:["#CC9978","#CD8C6F","#BE785E"] },
 		"salt_water": { elem2:"broth", tempMin:70, color2:["#CC9978","#CD8C6F","#BE785E"] },
@@ -7930,7 +8152,7 @@ SEEDRISE: function(pixel) {
 	breakInto: ["dirt","dirt","mycelium"]
 },
 "mycelium": {
-	color: ["#734d5e","#734d5e","#734d5e","#61404f","#6b4b5a","#755061","#866372","#987886","#ab8e9a","#bea4ad","#d0b9c1","#e3cfd5"],
+	color: ["#e3cfd5","#d0b9c1","#bea4ad","#ab8e9a","#987886","#866372","#734d5e","#734d5e","#734d5e","#755061","#6b4b5a","#61404f"],
 	buttonColor: ["#e3cfd5","#734d5e"],
 	behavior: behaviors.POWDER,
 	reactions: {
@@ -7954,6 +8176,14 @@ SEEDRISE: function(pixel) {
 "mulch": {
 	color: ["#94432c","#7a2912","#571a09"],
 	behavior: behaviors.POWDER,
+	tick: function(pixel) {
+		behaviors.ABSORB(pixel,1,0.01);
+	},
+	onBreak: behaviors.RELEASE_MOISTURE,
+	onDelete: behaviors.RELEASE_MOISTURE,
+	reactions: {
+		"water":{}, "salt_water":{}, "sugar_water":{}, "dirty_water":{}, "pool_water":{}, "seltzer":{}
+	},
 	tempHigh: 400,
 	stateHigh: ["dirt","dirt","ash","fire"],
 	burn: 1,
@@ -8181,7 +8411,6 @@ SEEDRISE: function(pixel) {
 	insulate: true,
 	state: "solid",
 	density: 160,
-	noMix: true,
 	darkText: true
 },
 "sponge": {
@@ -8911,7 +9140,8 @@ SEEDRISE: function(pixel) {
 	state: "liquid",
 	density: 1027.5,
 	viscosity: 270,
-	isFood: true
+	isFood: true,
+	alias: "egg yolk"
 },
 "hard_yolk": {
 	color: "#dead43",
@@ -9067,7 +9297,8 @@ SEEDRISE: function(pixel) {
 		"meat": { elem2:null, chance:0.001 },
 		"cooked_meat": { elem2:null, chance:0.0005 },
 		"oxygen": { elem2:"carbon_dioxide" },
-		"radiation": { elem1:["human","skin"], elem2:null }
+		"radiation": { elem1:["human","skin"], elem2:null },
+		"feather": { elem2:"bird", chance:0.01 }
 	},
 	tempHigh: 100,
 	stateHigh: "meat",
@@ -9193,6 +9424,7 @@ SEEDRISE: function(pixel) {
 		"basalt": { elem1:"juice", chance:0.1, color1:"#291824" },
 		"limestone": { elem1:"juice", chance:0.1, color1:"#291824" },
 		"tuff": { elem1:"juice", chance:0.1, color1:"#291824" },
+		"cinnabar": { elem1:"juice", chance:0.1, color1:"#291824" },
 		"water": { elem2:"juice", chance:0.005, color2:"#291824" },
 		"sugar_water": { elem2:"juice", chance:0.025, color2:"#291824" },
 		"acid": { elem1:"juice", color1:"#291824" },
@@ -9250,8 +9482,28 @@ SEEDRISE: function(pixel) {
 	stain: -0.8,
 	isFood: true
 },
+"spice": {
+	color: ["#e36622","#d94518"],
+	grain: 2,
+	behavior: behaviors.POWDER,
+	reactions: {
+		"water": { elem1:null, elem2:"sauce" },
+		"salt_water": { elem1:null, elem2:"sauce" },
+		"sugar_water": { elem1:null, elem2:"sauce" },
+		"seltzer": { elem1:null, elem2:"sauce" },
+		"steam": { elem2:"fragrance", chance:0.1 },
+		"sand": { elem2:"spice", color1:["#2259e3","#1838d9"], color2:["#2259e3","#1838d9"], chance:0.01 }
+	},
+	tempHigh: 300,
+	stateHigh: ["fire","smoke","smoke","fragrance","ash"],
+	category:"food",
+	isFood: true,
+	density: 460,
+	alias: ["pepper","paprika"]
+},
 "herb": {
 	color: ["#2e5a09","#3c6a16","#507b28","#759d3c"],
+	behavior: behaviors.POWDER,
 	reactions: {
 		"water": { elem2:"tea", tempMin:80 },
 		"salt_water": { elem2:"tea", tempMin:80 },
@@ -9265,7 +9517,6 @@ SEEDRISE: function(pixel) {
 		"ant": { elem2:null, chance:0.01 },
 		"stink_bug": { elem2:null, chance:0.01 }
 	},
-	behavior: behaviors.POWDER,
 	tempHigh: 300,
 	stateHigh: ["fire","smoke","smoke","smoke","ash"],
 	tempLow: -2,
@@ -9318,7 +9569,8 @@ SEEDRISE: function(pixel) {
 		"concrete": { elem1:"sauce", chance:0.1 },
 		"basalt": { elem1:"sauce", chance:0.1 },
 		"limestone": { elem1:"sauce", chance:0.1 },
-		"tuff": { elem1:"sauce", chance:0.1 }
+		"tuff": { elem1:"sauce", chance:0.1 },
+		"cinnabar": { elem1:"sauce", chance:0.1 }
 	},
 	tempHigh: 300,
 	stateHigh: ["fire","smoke","smoke","steam","ash"],
@@ -10144,18 +10396,19 @@ SEEDRISE: function(pixel) {
 	behavior: behaviors.LIQUID,
 	reactions: {
 		"virus": { elem2:null },
-		"plague": { elem2:null },
+		"plague": { elem1:"vinegar", elem2:null },
 		"charcoal": { color1:"#bdbdbd", chance:0.05 },
 		"flea": { elem2:"dead_bug", chance:0.1 },
 		"termite": { elem2:"dead_bug", chance:0.1 },
 		"ant": { elem2:"dead_bug", chance:0.1 },
 		"spider": { elem2:"dead_bug", chance:0.025 },
-		"fly": { elem2:"dead_bug", chance:0.1 },
+		"fly": { elem1:"vinegar", elem2:"dead_bug", chance:0.1 },
 		"firefly": { elem2:"dead_bug", chance:0.1 },
 		"bee": { elem2:"dead_bug", chance:0.1 },
 		"stink_bug": { elem2:"dead_bug", chance:0.1 },
 		"slug": { elem2:"slime", chance:0.01 },
 		"snail": { elem2:"limestone", chance:0.0025 },
+		"yolk": { elem2:"hard_yolk", elem1:"foam", attr1:{clone:"alcohol"}, chance:0.1 },
 	},
 	tempHigh: 78.37,
 	tempLow: -113.88,
@@ -10176,7 +10429,7 @@ SEEDRISE: function(pixel) {
 	stateHigh: "fire"
 },
 "basalt": {
-	color: ["#2e2e2e","#333333","#3d3d3d"],
+	color: ["#3d3d3d","#333333","#2e2e2e"],
 	behavior: behaviors.STURDYPOWDER,
 	reactions: {
 		"fly": { elem2:"dead_bug", chance:0.25, oneway:true },
@@ -10232,6 +10485,30 @@ SEEDRISE: function(pixel) {
 	density: 2725,
 	hidden: true
 },
+"cinnabar": {
+	color: ["#ce5340","#b93b37","#9c3541"],
+	grain: 1.5,
+	behavior: behaviors.STURDYPOWDER,
+	reactions: {
+		"fly": { elem2:"dead_bug", chance:0.25, oneway:true },
+		"firefly": { elem2:"dead_bug", chance:0.2, oneway:true },
+		"stink_bug": { elem2:"dead_bug", chance:0.15, oneway:true },
+		"bee": { elem2:"dead_bug", chance:0.1, oneway:true },
+		"bird": { elem2:"feather", chance:0.025, oneway:true },
+		"egg": { elem2:"yolk", oneway:true },
+		"bone": { elem2:"oil", tempMin:300, chance:0.005, oneway:true },
+		"dead_plant": { elem2:"charcoal", tempMin:200, chance:0.005, oneway:true },
+		"charcoal": { elem2:"diamond", tempMin:800, tempMax:900, chance:0.005, oneway:true }
+	},
+	tempHigh: 344,
+	stateHigh: ["sulfur","mercury"],
+	category: "land",
+	state: "solid",
+	density: 8170,
+	hardness: 0.225,
+	breakInto: "sand",
+	breakIntoColor: "#e68277"
+},
 "soap": {
 	color: "#f2f2f2",
 	behavior: [
@@ -10278,7 +10555,8 @@ SEEDRISE: function(pixel) {
 		"sugar_water": { elem1: ["foam","bubble"], chance:0.005 },
 		"seltzer": { elem1: ["foam","bubble"], chance:0.005 },
 		"pool_water": { elem1: ["foam","bubble"], chance:0.005 },
-		"fire": { elem1: "fragrance" }
+		"fire": { elem1: "fragrance" },
+		"juice": { elem2: "dna", chance:0.01 }
 	},
 	tempHigh: 100,
 	stateHigh: "bubble",
@@ -10630,7 +10908,6 @@ SEEDRISE: function(pixel) {
 		"flower_seed": { elem1:null, elem2:"dead_plant" },
 		"pistil": { elem1:null, elem2:"dead_plant" },
 		"petal": { elem1:null, elem2:"dead_plant" },
-		"grass_seed": { elem1:null, elem2:"dead_plant" },
 		"meat": { elem1:null, elem2:"rotten_meat" },
 		"cheese": { elem1:null, elem2:"rotten_cheese" },
 		"cheese_powder": { elem1:null, elem2:"rotten_cheese" },
@@ -10824,7 +11101,8 @@ SEEDRISE: function(pixel) {
 	reactions: {
 		"grape": { elem1:null, elem2:"jelly", chance:0.005, tempMin:100 },
 		"salt": { elem2:null, color1:"#ffbd80", chance:0.005},
-		"herb": { tempMax:180, elem1:"sugar", color1:["#c92626","#e3e3e3","#c92626","#e3e3e3","#c92626"], elem2:null, chance:0.1 }
+		"herb": { tempMax:180, elem1:"sugar", color1:["#c92626","#e3e3e3","#c92626","#e3e3e3","#c92626"], elem2:null, chance:0.1 },
+		"plant": { elem1:"molasses", chance:0.01 }
 	},
 	viscosity: 500,
 	tempLow: -20,
@@ -11064,7 +11342,7 @@ SEEDRISE: function(pixel) {
 		"oxygen": { elem1:"quicklime", elem2:null },
 		"water": { elem1:["slaked_lime","pop"], elem2:["hydrogen","bubble"], chance:0.005, temp2:350 },
 		"salt_water": { elem1:["slaked_lime","pop"], elem2:["hydrogen","bubble"], chance:0.005, temp2:350 },
-		"sugar_water": { elem1:["slaked_lime","pop"], elem2:["hydrogen","bubble"], chance:0.005, temp2:350 },
+		"sugar_water": { elem1:"milk", elem2:"milk", tempMin:70 },
 		"dirty_water": { elem1:["slaked_lime","pop"], elem2:["hydrogen","bubble"], chance:0.005, temp2:350 },
 		"seltzer": { elem1:["slaked_lime","pop"], elem2:["hydrogen","bubble"], chance:0.005, temp2:350 },
 		"pool_water": { elem1:["slaked_lime","pop"], elem2:["hydrogen","bubble"], chance:0.005, temp2:350 },
@@ -11241,7 +11519,8 @@ SEEDRISE: function(pixel) {
 		"dirty_water": { elem1:null, elem2:"hydrogen", chance:0.03 },
 		"seltzer": { elem1:null, elem2:"hydrogen", chance:0.03 },
 		"pool_water": { elem1:null, elem2:"hydrogen", chance:0.03 },
-		"nut_milk": { elem1:null, elem2:"hydrogen", chance:0.03 }
+		"nut_milk": { elem1:null, elem2:"hydrogen", chance:0.03 },
+		"helium": { elem1:"radiation", elem2:"molten_glass", tempMin:10000, temp1:20000, temp2:20000 }
 	}
 },
 "lye": {
@@ -11364,6 +11643,12 @@ SEEDRISE: function(pixel) {
 "neon": {
 	color: "#bababa",
 	behavior: behaviors.GAS,
+	reactions: {
+		"neutron": { elem2:"radiation", tempMin:10000, temp1:15000, temp2:15000 },
+		"neon": { elem1:"oxygen", elem2:"magnesium", tempMin:15000, tempMax:20000, temp1:15000, temp2:15000 },
+		"helium": { elem1:"radiation", elem2:"magnesium", tempMin:20000, tempMax:25000, temp1:30000, temp2:30000 },
+		"radiation": { elem1:"oxygen", elem2:"helium", tempMin:20000, temp1:30000, temp2:30000 },
+	},
 	colorOn: ["#ff0000","#d01822","#fe5c0c"],
 	tempLow: -246,
 	stateLow: "liquid_neon",
@@ -11463,7 +11748,9 @@ SEEDRISE: function(pixel) {
 "perfume": {
 	color: "#9656e3",
 	reactions: {
-		"liquid_stench": { elem2:null }
+		"liquid_stench": { elem2:null },
+		"sawdust": { elem2:"incense" },
+		"paper": { elem2:"incense" }
 	},
 	category: "liquids",
 	tempHigh: 40,
@@ -11814,17 +12101,11 @@ SEEDRISE: function(pixel) {
 		}, elemTitleCase(elements[element].name || element));
 	},
 	tick: function(pixel) {
-		if (isNaN(pixel.dir)) {
-			if (currentElement === pixel.element) {
-				logMessage("Pusher direction was not specified.");
-				selectElement("unknown");
-			}
-			deletePixel(pixel.x, pixel.y);
-			return;
-		}
 		doDefaults(pixel);
 
-		if (!pixel.charge) return;
+		if (isNaN(pixel.dir)) return;
+
+		if (!pixel.charge && !pixel.chargeCD) return;
 
 		let coords = directionToCoords(pixel.dir);
 		let toMove = [];
@@ -11842,16 +12123,19 @@ SEEDRISE: function(pixel) {
 		if (!toMove.length) return;
 
 		toMove.forEach(function(newPixel) {
-			tryMove(newPixel, newPixel.x + coords[0], newPixel.y + coords[1]);
+			tryMove(newPixel, newPixel.x + coords[0], newPixel.y + coords[1], undefined, true);
+			newPixel.drag = 1;
 		})
 	},
-	hoverStat: function(pixel) { return {0:"→", 1:"↓", 2:"←", 3:"↑"}[pixel.dir] || "" },
+	hoverStat: function(pixel) { return {"undefined":"?", 0:"→", 1:"↓", 2:"←", 3:"↑"}[pixel.dir] || "" },
+	rotatable: true,
 
 	category: "machines",
 	state: "solid",
 	conduct: 1,
 	movable: false,
-	darkText: true
+	darkText: true,
+	alias: "piston"
 },
 "portal_in": {
 	color: "#ff9a00",
@@ -12093,7 +12377,8 @@ SEEDRISE: function(pixel) {
 	behavior: behaviors.POWDER,
 	reactions: {
 		"hydrogen": { elem1:null, elem2:"stench" },
-		"silver": { stain2:"#251d0e", chance:0.005 }
+		"silver": { stain2:"#251d0e", chance:0.005 },
+		"mercury": { elem1:"cinnabar", elem2:null, tempMax:300 }
 	},
 	category: "powders",
 	tempHigh: 115.21,
@@ -12205,6 +12490,7 @@ SEEDRISE: function(pixel) {
 		"XX|RT%20|M2",
 		"CF|XX|XX"
 	],
+	onShiftSelect: behaviors.CLONER_SHIFT_SELECT,
 	onClicked: behaviors.CLONE_ON_CLICK,
 	ignore: ["cloner","slow_cloner","clone_powder","floating_cloner","ecloner"],
 	rotatable: true,
@@ -12311,7 +12597,7 @@ SEEDRISE: function(pixel) {
 		"evergreen": { elem2:["dead_plant","plant"], chance:0.4 },
 		"cactus": { elem2:["dead_plant","plant","cactus"], chance:0.4 },
 		"frozen_plant": { elem2:"dead_plant", chance:0.4 },
-		"grass": { elem2:["dead_plant","straw","grass_seed","wheat_seed","lettuce","herb","rice"], chance:0.4 },
+		"grass": { elem2:["dead_plant","straw","wheat_seed","lettuce","herb","rice","bamboo"], chance:0.4 },
 		"herb": { elem2:"dead_plant", chance:0.4 },
 		"algae": { elem2:["mushroom_spore","lichen","yeast","kelp"], chance:0.4 },
 		"kelp": { elem2:["mushroom_spore","lichen","yeast","algae","coral"], chance:0.4 },
@@ -12340,13 +12626,12 @@ SEEDRISE: function(pixel) {
 		"rotten_meat": { elem2:["ash","meat","cooked_meat"], chance:0.4 },
 		"cooked_meat": { elem2:["ash","rotten_meat"], chance:0.4 },
 		"bamboo": { elem2:["wood","plant","bamboo_plant"], chance:0.4 },
-		"bamboo_plant": { elem2:["wood","plant","bamboo"], chance:0.4 },
+		"bamboo_plant": { elem2:["wood","plant","bamboo","grass"], chance:0.4 },
 		"sapling": { elem2:["wood","plant","tree_branch"], chance:0.4 },
 		"tree_branch": { elem2:["wood","plant","sapling"], chance:0.4 },
-		"grass_seed": { elem2:["straw","wheat_seed"], chance:0.4 },
 		"lichen": { elem2:"algae", chance:0.4 },
 		"yeast": { elem2:["algae","mushroom_spore","lichen"], chance:0.4 },
-		"wheat_seed": { elem2:["straw","wheat","grass_seed"], chance:0.4 },
+		"wheat_seed": { elem2:["straw","wheat","grass"], chance:0.4 },
 		"flower_seed": { elem2:["straw","grass","pistil","petal"], chance:0.4 },
 		"pistil": { elem2:["straw","grass","flower_seed","petal"], chance:0.4 },
 		"petal": { elem2:["straw","grass","flower_seed","pistil"], chance:0.4 },
@@ -12378,7 +12663,8 @@ SEEDRISE: function(pixel) {
 		"pumpkin_seed": { elem2:"pumpkin", chance:0.4 },
 		"cloner": { func: function(pixel,cloner) {
 			if (cloner.clone === "antiice") changePixel(cloner, "lattice");
-		} }
+		} },
+		"salt": { color2: ["#f2aa44","#ffa536"] }
 	},
 	state: "gas",
 	density: 1.5,
@@ -12500,7 +12786,8 @@ SEEDRISE: function(pixel) {
 		"fire": { elem1:"carbon_dioxide", tempMin:900 },
 		"smoke": { elem1:"carbon_dioxide", tempMin:900 },
 		"molten_steel": { elem1:"carbon_dioxide", chance:0.001 },
-		"charcoal": { elem2:"diamond", tempMin:800, tempMax:900, chance:0.005, oneway:true }
+		"charcoal": { elem2:"diamond", tempMin:800, tempMax:900, chance:0.005, oneway:true },
+		"diamond": { elem1:["neutron","radiation"], elem2:["neon","helium","sodium","hydrogen","magnesium","oxygen"], tempMin:20000, temp1:30000, temp2:30000 },
 	},
 	category: "powders",
 	state: "solid",
@@ -12580,7 +12867,8 @@ SEEDRISE: function(pixel) {
 	reactions: {
 		"radiation": { elem1:"rad_shard", chance:0.33 },
 		"rad_steam": { elem1:"rad_shard", elem2:null, chance:0.33 },
-		"fallout": { elem1:"rad_shard", elem2:"radiation", chance:0.1 }
+		"fallout": { elem1:"rad_shard", elem2:"radiation", chance:0.1 },
+		"salt_water": { elem1:"wet_sand", elem2:null, chance:0.0005 }
 	},
 	tempHigh: 1500,
 	stateHigh: "molten_glass",
@@ -12725,6 +13013,10 @@ SEEDRISE: function(pixel) {
 "caustic_potash": {
 	color: "#feffe8",
 	behavior: behaviors.POWDER,
+	reactions: {
+		"chlorine": { elem1:"bleach", elem2:"bleach" },
+		"pool_water": { elem1:"bleach", elem2:"bleach" }
+	},
 	category: "powders",
 	tempHigh: 410,
 	state: "solid",
@@ -13101,15 +13393,24 @@ SEEDRISE: function(pixel) {
 },
 "god_ray": {
 	color: ["#ffffff","#ffee57"],
+	onShiftSelect: function(element) {
+		promptDir("Choose a direction to cast the ray.", function(r) {
+			if (isNaN(r)) return;
+			currentElementProp = { r:r }
+		}, elemTitleCase(elements[element].name || element));
+	},
 	tick: function(pixel) {
-		var x = pixel.x;
-		for (var y = pixel.y+1; y < height+1; y++) {
+		let dir = directionToCoords(pixel.r ?? 1);
+		let x = pixel.x-dir[0];
+		let y = pixel.y-dir[1];
+		while (true) {
+			x += dir[0];
+			y += dir[1];
 			if (outOfBounds(x, y)) {
 				if (isEmpty(x, y-1)) { createPixel("bless", x, y-1); }
 				break;
 			}
 			if (isEmpty(x, y)) {
-				if (Math.random() > 0.1) { continue }
 				createPixel("flash", x, y);
 				pixelMap[x][y].delay = (y - pixel.y) / 8;
 			}
@@ -13119,16 +13420,17 @@ SEEDRISE: function(pixel) {
 					delete pixelMap[x][y].burnStart;
 				}
 				if (elements[pixelMap[x][y].element].id === elements.flash.id) { continue }
-				if (elements[pixelMap[x][y].element].id === elements.god_ray.id) { break }
+				if (elements[pixelMap[x][y].element].id === elements.god_ray.id && pixelMap[x][y] !== pixel) { break }
 				if (!elements[pixelMap[x][y].element].isGas && isEmpty(x, y-1)) {
 					createPixel("bless", x, y-1);
 				}
-				if (Math.random() > 0.1) { continue }
 				elements.bless.tool(pixelMap[x][y])
 			}
 		}
 		deletePixel(pixel.x, pixel.y);
 	},
+	rotatable: true,
+	r: 1,
 	category: "energy",
 	state: "gas",
 	density: 1,
@@ -13138,15 +13440,24 @@ SEEDRISE: function(pixel) {
 },
 "heat_ray": {
 	color: ["#ff0000","#ff5e00"],
+	onShiftSelect: function(element) {
+		promptDir("Choose a direction to cast the ray.", function(r) {
+			if (isNaN(r)) return;
+			currentElementProp = { r:r }
+		}, elemTitleCase(elements[element].name || element));
+	},
 	tick: function(pixel) {
-		var x = pixel.x;
-		for (var y = pixel.y; y < height+1; y++) {
+		let dir = directionToCoords(pixel.r ?? 1);
+		let x = pixel.x-dir[0];
+		let y = pixel.y-dir[1];
+		while (true) {
+			x += dir[0];
+			y += dir[1];
 			if (outOfBounds(x, y)) {
 				if (isEmpty(x, y-1)) { createPixel("smoke", x, y-1); }
 				break;
 			}
 			if (isEmpty(x, y)) {
-				if (Math.random() > 0.05) { continue }
 				createPixel("flash", x, y);
 				pixelMap[x][y].color = "#ff0000";
 				pixelMap[x][y].temp = 3500;
@@ -13165,6 +13476,8 @@ SEEDRISE: function(pixel) {
 		}
 		deletePixel(pixel.x, pixel.y);
 	},
+	rotatable: true,
+	r: 1,
 	temp: 3500,
 	category: "energy",
 	state: "gas",
@@ -13174,15 +13487,25 @@ SEEDRISE: function(pixel) {
 },
 "freeze_ray": {
 	color: ["#00ffff","#00b3ff"],
+	onShiftSelect: function(element) {
+		promptDir("Choose a direction to cast the ray.", function(r) {
+			if (isNaN(r)) return;
+			currentElementProp = { r:r }
+		}, elemTitleCase(elements[element].name || element));
+	},
 	tick: function(pixel) {
-		var x = pixel.x;
-		for (var y = pixel.y; y < height+1; y++) {
+		let dir = directionToCoords(pixel.r ?? 1);
+		let x = pixel.x-dir[0];
+		let y = pixel.y-dir[1];
+		while (true) {
+			x += dir[0];
+			y += dir[1];
 			if (outOfBounds(x, y)) {
 				if (isEmpty(x, y-1)) { createPixel("cold_fire", x, y-1); }
 				break;
 			}
 			if (isEmpty(x, y)) {
-				if (Math.random() > 0.05) { continue }
+				// if (Math.random() > 0.05) { continue }
 				createPixel("flash", x, y);
 				pixelMap[x][y].color = "#00ffff";
 				pixelMap[x][y].temp = -100;
@@ -13204,6 +13527,8 @@ SEEDRISE: function(pixel) {
 		}
 		deletePixel(pixel.x, pixel.y);
 	},
+	rotatable: true,
+	r: 1,
 	temp: -270,
 	category: "energy",
 	state: "gas",
@@ -13394,8 +13719,7 @@ SEEDRISE: function(pixel) {
 	stateHigh: "molten_steel",
 	excludeRandom: true,
 	conduct: 1,
-	cooldown: defaultCooldown,
-	nocheer: true
+	cooldown: defaultCooldown
 },
 "dynamite": {
 	color: ["#de5050","#c92a2a","#a61919"],
@@ -13855,8 +14179,7 @@ SEEDRISE: function(pixel) {
 	tempHigh: 1455.5,
 	stateHigh: "molten_steel",
 	excludeRandom: true,
-	cooldown: defaultCooldown,
-	nocheer: true
+	cooldown: defaultCooldown
 },
 "landmine": {
 	color: "#856c7d",
@@ -13871,8 +14194,7 @@ SEEDRISE: function(pixel) {
 	tempHigh: 1455.5,
 	stateHigh: "molten_steel",
 	excludeRandom: true,
-	cooldown: defaultCooldown,
-	nocheer: true
+	cooldown: defaultCooldown
 },
 "tornado": {
 	color: ["#b8b8b8","#979797","#787878"],
@@ -14494,7 +14816,6 @@ else if (currentMonth == 11) { // December
 	elements.candy.breakIntoColor = ["#c92626","#e3e3e3"]
 }
 
-// Mod Loader
 runAfterLoadList = [];
 // runAfterLoad() takes a function and adds it to the runAfterLoadList.
 function runAfterLoad(func) {
@@ -14570,6 +14891,7 @@ keybinds["Equal"] = ()=>{ // Increase the mouse size by 2
 }
 keybinds["BracketRight"] = keybinds["Equal"];
 keybinds["Space"] = ()=>{ // Pause
+	if (editingPixels.length) return;
 	paused = !paused;
 	manualPaused = paused;
 	checkPause();
@@ -14578,13 +14900,20 @@ keybinds["KeyP"] = keybinds["Space"];
 keybinds["KeyK"] = keybinds["Space"];
 keybinds["Backquote"] = keybinds["Space"];
 keybinds["KeyE"] = ()=>{ // Select element
-	chooseElementPrompt();
+	// chooseElementPrompt();
+	showInfo();
 }
 keybinds["KeyR"] = ()=>{ // Reset canvas
 	resetPrompt();
 }
-keybinds["Period"] = ()=>{ // Single frame
+keybinds["Period"] = ()=>{ // Single frame (step)
 	doFrame();
+}
+keybinds["<"] = ()=>{ // Slow down
+	setTPS(Math.max(Math.min(tps,10), tps - 10));
+}
+keybinds[">"] = ()=>{ // Speed up
+	setTPS(Math.min(Math.max(tps,100), tps + 10));
 }
 keybinds["Semicolon"] = ()=>{ // Toggle Replace Mode
 	toggleReplaceMode();
@@ -14651,6 +14980,7 @@ keybinds["KeyH"] = ()=>{ // Hide rendering
 	if (hiding) {
 		loadingP.innerHTML = "Canvas is hidden. Press H to unhide"
 		loadingP.style.display = "flex";
+		loadingP.style.height = document.getElementById("canvasDiv").clientHeight + "px";
 		document.getElementById("canvasDiv").style.display = "none";
 	}
 	else {
@@ -14678,9 +15008,7 @@ keybinds["KeyZ"] = ()=>{ // Secondary element
 	selectCategory(elements[currentElement].category);
 }
 keybinds["Backspace"] = ()=>{ // Select previous element
-	if (prevElement) {
-		selectElement(prevElement)
-	}
+	selectPrevElement();
 }
 keybinds["Enter"] = (e)=>{ // Reselect element
 	if (e.target.tagName === "BUTTON" && e.target.getAttribute("element") !== currentElement) {
@@ -14698,6 +15026,95 @@ keybinds["Enter"] = (e)=>{ // Reselect element
 			}
 		}
 	}
+}
+keybinds["^KeyS"] = ()=>{ // Ctrl+S = Save
+	saveToFile();
+	if (shiftDown) confirmSave();
+}
+keybinds["^KeyO"] = ()=>{ // Ctrl+O = Load Save
+	if (shiftDown) {
+		if (lastSaveJSON !== null) loadSave(JSON.parse(lastSaveJSON));
+	}
+	else loadFromFile();
+}
+keybinds["^KeyZ"] = ()=>{ // Ctrl+Z = Undo
+	if (shiftDown) historyRedo();
+	else historyUndo();
+}
+keybinds["^KeyY"] = ()=>{ // Ctrl+Y = Redo
+	historyRedo();
+}
+keybinds["^Backspace"] = ()=>{ // Ctrl+Backspace = Delete Selection
+	if (currentElement === "select" && currentElementProp) {
+		selectElement("erase");
+	}
+	else return false;
+}
+keybinds["^KeyC"] = ()=>{ // Ctrl+C = Copy Selection
+	if (currentElement === "select" && currentElementProp) {
+		selectElement("copy");
+	}
+	else return false;
+}
+keybinds["^KeyX"] = ()=>{ // Ctrl+C = Cut Selection
+	if (currentElement === "select" && currentElementProp) {
+		selectElement("cut");
+	}
+	else return false;
+}
+keybinds["^KeyV"] = ()=>{ // Ctrl+V = Paste Stamp
+	if (currentClipboard.length) {
+		selectElement("paste");
+	}
+	else return false;
+}
+keybinds["^KeyM"] = ()=>{ // Ctrl+M = Move Selection
+	if (currentElement === "select" && currentElementProp) {
+		selectElement("cut");
+		selectElement("paste");
+	}
+	else return false;
+}
+keybinds["^KeyD"] = ()=>{ // Ctrl+D = Duplicate Selection
+	if (currentElement === "select" && currentElementProp) {
+		selectElement("copy");
+	}
+	else if (!currentClipboard.length) return false;
+	if (currentClipboard.length) {
+		selectElement("paste");
+	}
+	else return false;
+}
+keybinds["KeyX"] = ()=>{ // X = Horizontal Flip Stamp
+	if (!placingStamp) return false;
+
+	placingStamp.reverse();
+}
+keybinds["KeyY"] = ()=>{ // Y = Vertical Flip Stamp
+	if (!placingStamp) return false;
+
+	placingStamp.forEach(row => row.reverse());
+}
+keybinds["^Comma"] = ()=>{ // Ctrl+< = Rotate Stamp Counterclockwise
+	if (!placingStamp) return false;
+
+	placingStamp = placingStamp[0].map((val, index) => placingStamp.map(row => row[index]).reverse())
+}
+keybinds["^Period"] = ()=>{ // Ctrl+> = Rotate Stamp Clockwise
+	if (!placingStamp) return false;
+
+	placingStamp = placingStamp[0].map((val, index) => placingStamp.map(row => row[row.length-1-index]));
+}
+keybinds["KeyG"] = ()=>{ // G = Toggle Grid
+	if (shiftDown) {
+		if (!showGrid) showGrid = 2;
+		else showGrid ++;
+		if (showGrid > 8 || showGrid < 2) showGrid = 0;
+		return;
+	}
+	if (!showGrid) showGrid = 8;
+	else showGrid --;
+	if (showGrid < 2) showGrid = 0;
 }
 // If the localStorage key "enabledMods" exists, load it as an array.
 // If it doesn't exist, create an empty array.
@@ -14733,10 +15150,12 @@ function checkDependents(modName) {
 }
 function modIsEnabled(modName) {
 	if (modName.indexOf("/") !== -1) {
-		modName = modName.match(/\/[^\/]+$/g)[0].substring(1);
+		let match = modName.match(/\/[^\/]+$/g);
+		if (match) modName = match[0].substring(1);
 	}
 	return enabledModNames.indexOf(modName) !== -1;
 }
+// Mod Loader
 for (var i = 0; i < enabledMods.length; i++) {
 	let src = enabledMods[i];
 	let split = src.split("/");
@@ -14767,6 +15186,7 @@ for (var i = 0; i < enabledMods.length; i++) {
 		}
 		queuedMods.push(modName);
 		script.src = src;
+		// script.type = "module";
 		script.addEventListener("load", function(){
 			checkDependents(modName);
 			loadedMods.push(modName);
@@ -14855,7 +15275,7 @@ if (langCode) {
 		//	 "gui.saveAuthor": "ENTER UR NAME",
 		//	 "gui.settingUnitsI": "AMERICA",
 		// }
-		if (lang["#lang.font"]) {
+		if (lang["#lang.font"] && !lang["#lang.font"].match(/#|font/)) {
 			var style = document.createElement("style");
 			style.innerHTML = "body{font-family:'"+lang["#lang.font"]+"'!important;}"
 			document.head.appendChild(style);
@@ -15430,6 +15850,17 @@ function langKey(key,fallback,template) {
 			}
 			return coords.map(n => n * distance);
 		}
+		function coordsToDirection(x, y) {
+			if (y === 0) {
+				if (x === 1) return 0;
+				if (x === -1) return 2;
+			}
+			else if (x === 0) {
+				if (y === 1) return 1;
+				if (y === -1) return 3;
+			}
+			return null;
+		}
 
 		validDensitySwaps = {
 			"solid": {
@@ -15446,9 +15877,8 @@ function langKey(key,fallback,template) {
 			undefined: {}
 		}
 		function tryMove(pixel,nx,ny,leaveBehind,force) {
-			if (pixel.drag && force !== true) return true;
-			if (pixel.del ) return false;
 			if (validateMovesList.length !== 0 && force !== true) {
+				if (pixel.del) return false;
 				for (let i = 0; i < validateMovesList.length; i++) {
 					const result = validateMovesList[i](pixel,nx,ny);
 					if (result === false) return false;
@@ -15458,6 +15888,14 @@ function langKey(key,fallback,template) {
 					}
 				}
 			}
+			if (pixel.del) return false;
+			if (pixel.drag && force !== true) {
+				if (pixel.drag !== true) {
+					pixel.drag --;
+					if (pixel.drag <= 0) delete pixel.drag;
+				}
+				return true;
+			};
 			if (pixel._r !== undefined) {
 				let relation = getRelation(pixel._r);
 				if (relation.lastMove === pixelTicks) return;
@@ -16356,6 +16794,7 @@ behaviorRules = {
 					var coords = move2Spots[i];
 					var nx = coords.x;
 					var ny = coords.y;
+					if (pixel._r !== undefined) allowMoveRelation(pixel._r);
 					moved = tryMove(pixel,nx,ny,btemp.leaveBehind2 || btemp.leaveBehind);
 					if (moved) {
 						if (btemp.C2 && elements[btemp.C2]) {
@@ -16661,10 +17100,9 @@ behaviorRules = {
 			newPixel.color = "rgb("+avg.join(",")+")";
 		}
 
-		function pixelColorPick(pixel,customColor=null) {
+		function pixelColorPick(pixel, customColor=null, grain=undefined) {
 			let element = pixel.element;
 			let elementInfo = elements[element];
-			//if (elementInfo.behavior instanceof Array) {
 			
 			if (pixel.charge && elementInfo.colorOn) {
 				customColor = elementInfo.colorOn;
@@ -16687,7 +17125,8 @@ behaviorRules = {
 				}
 			}
 			// Randomly darken or lighten the RGB color
-			let grain = 15;
+			if (grain === undefined) grain = 15;
+			else grain = 15 * grain;
 			if (elementInfo.grain !== undefined) { grain = grain * elementInfo.grain }
 			let coloroffset = Math.floor(Math.random() * (Math.random() > 0.5 ? -1 : 1) * Math.random() * grain);
 			let r = rgb.r + coloroffset;
@@ -16699,13 +17138,6 @@ behaviorRules = {
 			b = Math.max(0, Math.min(255, b));
 			let color = "rgb("+r+","+g+","+b+")";
 			
-			/*}
-			else {
-				var color = elementInfo.color;
-				if (Array.isArray(color)) {
-					color = color[Math.floor(Math.random() * color.length)];
-				}
-			}*/
 			return color;
 		}
 		function colorPatternPick(pixel) {
@@ -16894,15 +17326,30 @@ behaviorRules = {
 				}
 			}
 		}
-	   function selection(x1,y1,x2,y2) {
+	    function selection(x1,y1,x2,y2) {
+			if (x2 < x1) {
+				const temp = x2;
+				x2 = x1;
+				x1 = temp
+			}
+			if (y2 < y1) {
+				const temp = y2;
+				y2 = y1;
+				y1 = temp
+			}
 			var selection = [];
-			for (var i = x1; i <= x2; i++) {
-				selection[i] = [];
+			for (var i = Math.max(0, x1); i <= Math.min(x2, width); i++) {
+				const x = i - x1;
+				selection[x] = [];
 				for (var j = y1; j <= y2; j++) {
-					selection[i][j] = pixelMap[i][j];
+					const y = j - y1;
+					selection[x][y] = pixelMap[i][j];
 				}
 			}
 			return selection;
+		}
+		function selectionArray(x1,y1,x2,y2) {
+			return [].concat(...selection(x1,y1,x2,y2)).filter(p => p);
 		}
 
 		function generateScreenshot() {
@@ -16957,49 +17404,63 @@ behaviorRules = {
 			var codesReverse = {};
 			var codeN = 65;
 
-			let airTemp = currentSaveData.airtemp;
+			const airTemp = currentSaveData.airtemp;
 
-			for (var i = 0; i < pixelarray.length; i++) {
-				for (var j = 0; j < pixelarray[i].length; j++) {
-					var pixel = pixelarray[i][j];
-					if (pixel) {
-						var keepColor = false;
-						if (elements[pixel.element].singleColor || elements[pixel.element].customColor || elements[pixel.element].forceSaveColor || pixel.painted !== undefined) {
-							keepColor = pixel.color
+			if (saveOptions.startX !== undefined) {
+				pixelarray = pixelarray.slice(saveOptions.startX, saveOptions.endX+1);
+				for (let i = 0; i < pixelarray.length; i++) {
+					pixelarray[i] = pixelarray[i].slice(saveOptions.startY, saveOptions.endY+1);
+				}
+			}
+
+			for (let i = 0; i < pixelarray.length; i++) {
+				const row = pixelarray[i];
+				for (let j = 0; j < pixelarray[i].length; j++) {
+					const oldPixel = row[j];
+					if (oldPixel) {
+						const element = oldPixel.element;
+						let keepColor = false;
+						if (elements[element].singleColor || elements[element].customColor || elements[element].forceSaveColor || oldPixel.painted !== undefined) {
+							keepColor = oldPixel.color
 						}
-						// remove unneeded properties
-						for (var k = 0; k < ignoreProperties.length; k++) { delete pixel[ignoreProperties[k]]; }
-						// remove undefined properties
-						for (var key in pixel) { if (pixel[key] === undefined) { delete pixel[key]; } }
+						// remove unneeded/undefined properties
+						for (let k = 0; k < ignoreProperties.length; k++) oldPixel[ignoreProperties[k]] = undefined;
+						const pixel = {};
+						for (const key in oldPixel) {
+							const value = oldPixel[key];
+							if (value !== undefined) pixel[key] = value;
+						}
+						row[j] = pixel;
 						if (keepColor !== false) { pixel.color = keepColor }
-						if (!saveOptions.raw && pixel.element) {
-							if (!codes[pixel.element]) {
-								var char = String.fromCharCode(codeN);
-								codes[pixel.element] = char;
-								codesReverse[char] = pixel.element;
+						if (!saveOptions.raw && element) {
+							if (!codes[element]) {
+								const code = String.fromCharCode(codeN);
+								codes[element] = code;
+								codesReverse[code] = element;
 								codeN++;
 								if (unicodeSkips[codeN]) {
 									codeN = unicodeSkips[codeN];
 								}
 							}
-							pixel.element = codes[pixel.element];
+							pixel.element = codes[element];
 						}
 						if (pixel.temp !== undefined) {
 							pixel.temp = Math.round(pixel.temp);
 							if (pixel.temp === airTemp) { delete pixel.temp; }
 						}
 						if (!saveOptions.raw) {
-							for (var prop in pixel) {
-								if (!codes[prop]) {
-									var char = String.fromCharCode(codeN);
-									codes[prop] = char;
-									codesReverse[char] = prop;
+							for (const prop in pixel) {
+								let code = codes[prop];
+								if (code === undefined) {
+									code = String.fromCharCode(codeN);
+									codes[prop] = code;
+									codesReverse[code] = prop;
 									codeN++;
 									if (unicodeSkips[codeN]) {
 										codeN = unicodeSkips[codeN];
 									}
 								}
-								pixel[codes[prop]] = pixel[prop];
+								pixel[code] = pixel[prop];
 								delete pixel[prop];
 							}
 						}
@@ -17009,30 +17470,36 @@ behaviorRules = {
 					}
 				}
 			}
-			// var userSettings = {};
-			// if (saveOptions.settings !== false) {
-			// 	for (var key in settings) {
-			// 		if (vitalSettings.indexOf(key) !== -1) {
-			// 			userSettings[key] = settings[key];
-			// 		}
-			// 	}
-			// }
-			if (saveOptions.mods === false) { var mods = []; }
-			else { var mods = enabledMods }
-			if (standalone) {
-				var url = standaloneType || "standalone";
+
+			let mods;
+			if (saveOptions.mods === false) mods = [];
+			else mods = enabledMods;
+			let url;
+			if (standalone) url = standaloneType || "standalone";
+			else if (window.location.protocol === "file:") url = "local";
+			else url = window.location.href;
+			let _otherCodes = {};
+			let otherCodes = [];
+			let currentOtherCode = 0;
+			let compressedMap;
+			if (!saveOptions.raw) {
+				compressedMap = JSON.stringify(pixelarray).replace(/,0/g,"×").replace(/":"/g,"»").replace(/,"/g,"§").replace(/element»/g,"©").replace(/"\},\{"/g,"¸").replace(/×××/g,"³").replace(/¸©/g,"¦").replace(/"\}\],\[/g,"®").replace(/\{"/g,"¶").replace(/:true/g,"¥").replace(/:false/g,"¡").replace(/":/g,"¼").replace(/\},/g,"½").replace(/"¥§/g,"¾").replace(/³³³/g,"°").replace(/\],\[/g,"¤").replace(/rgb\(/g,"º").replace(/\)¸/g,"ª");
+				
+				compressedMap = compressedMap.replace(/"§[A-Z][^"°]+/g, (m) => {
+					const value = m.slice(2);
+					if (_otherCodes[value] === undefined) {
+						_otherCodes[value] = currentOtherCode;
+						otherCodes.push(value);
+						currentOtherCode ++;
+						return "¬" + (currentOtherCode-1);
+					}
+					return "¬" + _otherCodes[value];
+				});
 			}
-			else if (window.location.protocol === "file:") {
-				var url = "local";
-			}
-			else {
-				var url = window.location.href;
-			}
-			if (!saveOptions.raw) { var compressedMap = JSON.stringify(pixelarray).replace(/,0/g,"×").replace(/":"/g,"»").replace(/,"/g,"§").replace(/element»/g,"©").replace(/"\},\{"/g,"¸").replace(/×××/g,"³").replace(/¸©/g,"¦").replace(/"\}\],\[/g,"®").replace(/\{"/g,"¶").replace(/:true/g,"¥").replace(/:false/g,"¡").replace(/":/g,"¼").replace(/\},/g,"½").replace(/"¥§/g,"¾").replace(/³³³/g,"°").replace(/\],\[/g,"¤").replace(/rgb\(/g,"º").replace(/\)¸/g,"ª"); }
-			else { var compressedMap = pixelarray; }
-			var seriesIndex = 0;
-			var createdTime = Date.now();
-			var seriesId = uuidv4();
+			else compressedMap = pixelarray;
+			let seriesIndex = 0;
+			let createdTime = Date.now();
+			let seriesId = uuidv4();
 			if (currentSaveData.loaded) {
 				if (currentSaveData.seriesIndex !== undefined) {
 					seriesIndex = currentSaveData.seriesIndex + 1;
@@ -17050,55 +17517,62 @@ behaviorRules = {
 				delete relations[rid].p;
 				delete relations[rid].lastMove;
 				if (relations[rid].type <= 2) delete relations[rid].type;
-				for (let prop in relations[rid]) {
-					if (!codes[prop]) {
-						var char = String.fromCharCode(codeN);
-						codes[prop] = char;
-						codesReverse[char] = prop;
+				for (const prop in relations[rid]) {
+					let code = codes[prop];
+					if (code === undefined) {
+						code = String.fromCharCode(codeN);
+						codes[prop] = code;
+						codesReverse[code] = prop;
 						codeN++;
 						if (unicodeSkips[codeN]) {
 							codeN = unicodeSkips[codeN];
 						}
 					}
-					relations[rid][codes[prop]] = relations[rid][prop];
+					relations[rid][code] = relations[rid][prop];
 					delete relations[rid][prop];
 				}
 				if (Object.keys(relations[rid]).length === 0) {
 					delete relations[rid];
 				}
 			}
-			let saveConfig = {
-				// "settings":userSettings,
-				"mods":mods,
-				"pixelTicks":pixelTicks,
-				"tps":tps,
-				"currentElement":currentElement,
-				"height":height,
-				"width":width,
-				"pixelSize":pixelSize,
-				"view":view,
-				"paused":paused,
-				"mouseSize":mouseSize,
-				"border":currentSaveData.border||0,
+			let saveConfig = null
+			if (saveOptions.strip) {
+				saveConfig = {"height":pixelarray[0].length-1, "width":pixelarray.length-1, "pixelSize":pixelSize}
+			}
+			else {
+				saveConfig = {
+					// "settings":userSettings,
+					"mods":mods,
+					"pixelTicks":pixelTicks,
+					"tps":tps,
+					"currentElement":currentElement,
+					"height":pixelarray[0].length-1,
+					"width":pixelarray.length-1,
+					"pixelSize":pixelSize,
+					"view":view,
+					"paused":manualPaused,
+					"mouseSize":mouseSize,
+					"border":currentSaveData.border||0,
 
-				"bg": currentSaveData.bg,
-				"bgimg": currentSaveData.bgimg,
-				"airtemp": currentSaveData.airtemp,
-				"airdensity": currentSaveData.airdensity,
-				"abszero": currentSaveData.abszero,
-				"clouds": currentSaveData.clouds,
-				"events": currentSaveData.events,
-				"stain": currentSaveData.stain,
-				"burn": currentSaveData.burn,
-				"limitless": currentSaveData.limitless,
-				"temploss": currentSaveData.temploss,
-			};
-			if (currentSaveData.voidX) saveConfig.voidX = true;
-			if (currentSaveData.voidY) saveConfig.voidY = true;
-			if (currentSaveData.loopX) saveConfig.loopX = true;
-			if (currentSaveData.loopY) saveConfig.loopY = true;
-			return {
-				"meta":{
+					"bg": currentSaveData.bg,
+					"bgimg": currentSaveData.bgimg,
+					"airtemp": currentSaveData.airtemp,
+					"airdensity": currentSaveData.airdensity,
+					"abszero": currentSaveData.abszero,
+					"clouds": currentSaveData.clouds,
+					"events": currentSaveData.events,
+					"stain": currentSaveData.stain,
+					"burn": currentSaveData.burn,
+					"limitless": currentSaveData.limitless,
+					"temploss": currentSaveData.temploss,
+				};
+				if (currentSaveData.voidX) saveConfig.voidX = true;
+				if (currentSaveData.voidY) saveConfig.voidY = true;
+				if (currentSaveData.loopX) saveConfig.loopX = true;
+				if (currentSaveData.loopY) saveConfig.loopY = true;
+			}
+			let obj = {
+				"meta": saveOptions.strip ? null : {
 					"saveVersion":"sb"+saveVersion,
 					"gameVersion":currentversion,
 					"name":saveOptions.name||"",
@@ -17112,11 +17586,20 @@ behaviorRules = {
 					"url":url,
 					"tags":saveOptions.tags||[]
 				},
-				"saveConfig":saveConfig,
+				"saveConfig": saveConfig,
 				"codes":codesReverse,
 				"pixelMap":compressedMap,
-				"relations":relations
+				"relations":relations,
+				"otherCodes":otherCodes
 			}
+			if (saveOptions.strip) {
+				delete obj.meta;
+			}
+			if (saveOptions.startX !== undefined) {
+				delete saveOptions.pixelSize;
+				obj.meta = {"stamp":true};
+			}
+			return obj;
 		}
 		saveElementMigrations = {
 			"sticky_bomb": function(pixel) {
@@ -17143,12 +17626,15 @@ behaviorRules = {
 				pixel.clone = "electric";
 			},
 			"led_r": function(pixel) {
+				if (!pixel.color) pixel.color = "rgb(255,12,12)";
 				pixel.element = "led";
 			},
 			"led_g": function(pixel) {
+				if (!pixel.color) pixel.color = "rgb(12,255,12)";
 				pixel.element = "led";
 			},
 			"led_b": function(pixel) {
+				if (!pixel.color) pixel.color = "rgb(12,12,255)";
 				pixel.element = "led";
 			},
 			"superheater": function(pixel) {
@@ -17169,9 +17655,16 @@ behaviorRules = {
 						body._r = rid;
 					}
 				}
-			}
+			},
+			"grass_seed": function(pixel) {
+				pixel.element = "grass";
+				pixel.h = 0;
+			},
+			"packed_sand": function(pixel) {
+				pixel.element = "sandstone";
+			},
 		}
-		function loadSave(saveJSON, confirmed=0, skip=0) {
+		function loadSave(saveJSON, confirmed=0, skip=0, softLoad=false) {
 			if (!saveJSON.pixelMap) { return }
 			var compressedMap = saveJSON.pixelMap;
 			if (!compressedMap) {
@@ -17179,8 +17672,17 @@ behaviorRules = {
 			}
 			var saveConfig = saveJSON.saveConfig || {};
 			var savePixelSize = parseInt(saveConfig.pixelSize)||6;
-			var version = parseInt(saveJSON.meta.saveVersion.split("sb")[1]);
-			if (!confirmed) {
+			var version = (saveJSON.meta && saveJSON.meta.saveVersion) ? parseInt(saveJSON.meta.saveVersion.split("sb")[1]) : saveVersion;
+
+			const isStamp = saveJSON.meta ? saveJSON.meta.stamp === true : false;
+			// const oldState = isStamp ? {
+			// 	pixelMap: pixelMap,
+			// 	currentPixels: currentPixels,
+			// 	currentSaveData: currentSaveData,
+			// 	currentRelations: currentRelations
+			// } : null;
+
+			if (!confirmed && !isStamp) {
 				if (version < 1 || !version) {
 					promptConfirm("This save was made in an unknown version of Sandboxels, and may not load correctly.", (r)=>{ if (!r) return; loadSave(saveJSON,1,skip) }, "Warning");
 					return;
@@ -17194,7 +17696,7 @@ behaviorRules = {
 					return;
 				}
 			}
-			if (saveConfig.mods && skip < 3) {
+			if (saveConfig.mods && skip < 3 && !softLoad && !isStamp) {
 				if (confirmed < 3) {
 					for (var i = 0; i < saveConfig.mods.length; i++) {
 						if (!modIsEnabled(saveConfig.mods[i])) {
@@ -17218,23 +17720,48 @@ behaviorRules = {
 					return;
 				}
 			}
-			resizeCanvas(saveConfig.height*savePixelSize+savePixelSize,saveConfig.width*savePixelSize+savePixelSize,savePixelSize,true,true);
-			clearAll(true);
+			if (!isStamp) {
+				resizeCanvas(saveConfig.height*savePixelSize+savePixelSize,saveConfig.width*savePixelSize+savePixelSize,savePixelSize,true,true);
+				clearAll(true);
+			}
+			const _pixelMap = isStamp ? (() => {
+				let array = [];
+				for (var i = 0; i <= width; i++) {
+					array[i] = [];
+					for (var j = 0; j <= height; j++) {
+						array[i][j] = undefined;
+					}
+				}
+				return array;
+			})() : pixelMap;
+			
 			let oldTps = tps;
-			tps = parseInt(saveConfig.tps)||30;
-			resetInterval(tps);
+			if (softLoad === false && !isStamp) {
+				tps = parseInt(saveConfig.tps)||30;
+				resetInterval(tps);
+
+				if (saveConfig.paused) {
+					paused = true;
+					manualPaused = true;
+					checkPause();
+				}
+			}
 			// if (saveConfig.currentElement) {
 			//	 selectElement(saveConfig.currentElement||firstElement);
 			//	 selectCategory(elements[currentElement].category);
 			// }
 			// if (saveConfig.mouseSize) { mouseSize = saveConfig.mouseSize };
 			// if (saveConfig.view) { setView(saveConfig.view) };
-			if (saveConfig.paused) {
-				paused = true;
-				manualPaused = true;
-				checkPause();
-			}
+			let pixelarray;
 			if (typeof compressedMap !== "object") {
+				if (version >= 9 && saveJSON.otherCodes) {
+					const otherCodes = saveJSON.otherCodes;
+					for (let i = otherCodes.length-1; i >= 0; i--) {
+						const value = otherCodes[i];
+						// console.log(value);
+						compressedMap = compressedMap.replaceAll("¬"+(i), "\"§"+value);
+					}
+				}
 				if (version >= 2) {
 					compressedMap = compressedMap.replace(/ª/g,")¸").replace(/º/g,"rgb(");
 				}
@@ -17244,6 +17771,30 @@ behaviorRules = {
 			else {
 				pixelarray = compressedMap;
 			}
+			if (isStamp) {
+				placingStamp = pixelarray;
+				for (var x = 0; x < placingStamp.length; x++) {
+					for (var y = 0; y < placingStamp[x].length; y++) {
+						const pixel = placingStamp[x][y];
+						if (pixel === 0) continue;
+						for (const prop in pixel) {
+							if (saveJSON.codes[prop]) {
+								pixel[saveJSON.codes[prop]] = pixel[prop];
+								delete pixel[prop];
+							}
+						}
+						if (pixel.element) {
+							pixel.element = saveJSON.codes[pixel.element] || pixel.element;
+							if (!elements[pixel.element]) {
+								pixel.invalidElement = pixel.element;
+								pixel.element = "unknown";
+							}
+						}
+					}
+				}
+				selectElement("paste");
+				return;
+			}
 			if (version >= 8) {
 				for (let prop in saveJSON.relations) {
 					if (saveJSON.codes[prop]) {
@@ -17252,28 +17803,27 @@ behaviorRules = {
 					}
 				}
 			}
-			currentRelations = saveJSON.relations || { _id:1 };
+			if (!isStamp) currentRelations = saveJSON.relations || { _id:1 };
 			for (var x = 0; x < pixelarray.length; x++) {
 				for (var y = 0; y < pixelarray[x].length; y++) {
-					var pixel = pixelarray[x][y];
+					const pixel = pixelarray[x][y];
 					if (pixel) {
-						let element;
-						for (var prop in pixel) {
+						for (const prop in pixel) {
 							if (saveJSON.codes[prop]) {
 								pixel[saveJSON.codes[prop]] = pixel[prop];
 								delete pixel[prop];
 							}
 						}
 						if (pixel.element) {
-							pixel.element = saveJSON.codes[pixel.element]||pixel.element;
-							if (element === undefined) element = pixel.element;
+							pixel.element = saveJSON.codes[pixel.element] || pixel.element;
 							if (!elements[pixel.element]) {
+								pixel.invalidElement = pixel.element;
 								pixel.element = "unknown";
 							}
 						}
 						createPixel(pixel.element,x,y);
 						// set the properties
-						for (var prop in pixel) {
+						for (const prop in pixel) {
 							// if (!pixelMap[x][y]) continue;
 							pixelMap[x][y][prop] = pixel[prop];
 						}
@@ -17292,15 +17842,20 @@ behaviorRules = {
 				}
 			}
 			currentPixels.forEach(function(pixel){
-				const element = pixel.element;
+				const element = pixel.invalidElement || pixel.element;
 				if (saveElementMigrations[element]) {
+					if (pixel.invalidElement && pixel.color === "rgb(255,255,255)") delete pixel.color;
 					saveElementMigrations[element](pixel, version);
-					if (pixel.color === undefined && pixel.element === "unknown") {
-						pixelMap[x][y].color = pixelColorPick(pixelMap[x][y]);
+					if (pixel.color === undefined) {
+						pixel.color = pixelColorPick(pixel);
 					}
 				}
+				if (pixel._r) getRelation(pixel._r);
 			})
 			pixelTicks = parseInt(saveConfig.pixelTicks)||0;
+
+			if (softLoad === true) return pixelarray;
+
 			if (saveConfig.border === undefined) {
 				saveConfig.border = 1;
 			}
@@ -17333,7 +17888,7 @@ behaviorRules = {
 				"limitless": saveConfig.limitless ?? settings.limitless,
 				"temploss": saveConfig.temploss ?? settings.temploss,
 			}
-			if (saveConfig.settings) {
+			if (saveConfig.settings) { //deprecated, backwards compat
 				for (var key in saveConfig.settings) {
 					currentSaveData[key] = saveConfig.settings[key];
 				}
@@ -17345,6 +17900,81 @@ behaviorRules = {
 			if (showingMenu) closeMenu();
 			if (currentSaveData.bgimg || settings.bgimg) setCanvasBackground(currentSaveData.bgimg || settings.bgimg);
 			return pixelarray;
+		}
+		
+		// UNDO / REDO
+		function historyLog() {
+			if (historyIndex !== null) {
+				for (let i = historyIndex; i <= historyTimeline.max; i++) {
+					delete historyTimeline[i];
+				}
+				historyTimeline.max = historyIndex;
+				// console.log(historyTimeline)
+				historyIndex = null;
+			}
+
+			historyTimeline[historyTimeline.max] = generateSave(undefined, {keep:["temp","color"], strip:true});
+			historyTimeline.max ++;
+			if (historyTimeline.max - historyTimeline.min >= 11) {
+				delete historyTimeline[historyTimeline.min];
+				historyTimeline.min ++;
+			};
+			// console.log(historyTimeline)
+			checkUndoRedo();
+		}
+
+		function historyLoad(index) {
+			const _timeline = historyTimeline;
+			const _mousePos = mousePos;
+			const _currentSaveData = currentSaveData;
+			loadSave(_timeline[index], 99, 99, true);
+			currentSaveData = _currentSaveData;
+			historyTimeline = _timeline;
+			historyIndex = index;
+			mousePos = _mousePos;
+		}
+		function historyPop() {
+			delete historyTimeline[historyTimeline.max-1];
+			historyTimeline.max --;
+			checkUndoRedo();
+		}
+
+		function historyUndo() {
+			if (historyTimeline.min === historyTimeline.max) return;
+			if (historyIndex === null) {
+				historyLog();
+				historyIndex = historyTimeline.max-1;
+			}
+			historyIndex --;
+			
+			if (historyIndex < historyTimeline.min) {
+				historyIndex = historyTimeline.min;
+				return false;
+			}
+
+			historyLoad(historyIndex);
+			checkUndoRedo();
+			return true;
+		}
+		function historyRedo() {
+			if (historyIndex === null) return;
+			if (historyTimeline.min === historyTimeline.max) return;
+
+			historyIndex ++;
+
+			if (historyIndex >= historyTimeline.max-1) {
+				historyIndex = historyTimeline.max-1;
+				historyLoad(historyIndex);
+				historyIndex = null;
+				delete historyTimeline[historyTimeline.max-1];
+				historyTimeline.max --;
+				checkUndoRedo();
+				return true;
+			}
+
+			historyLoad(historyIndex);
+			checkUndoRedo();
+			return true;
 		}
 
 		function explodeAt(x,y,radius,fire="fire") {
@@ -17498,37 +18128,37 @@ behaviorRules = {
 			return empty;
 		}
 		adjacentCoords = [
-			[0,1],
-			[0,-1],
 			[1,0],
-			[-1,0]
+			[0,1],
+			[-1,0],
+			[0,-1]
 		];
 		squareCoords = [
-			[0,-1],
-			[0,1],
 			[1,0],
-			[-1,0],
 			[1,1],
+			[0,1],
 			[1,-1],
-			[-1,1],
-			[-1,-1]
+			[-1,0],
+			[-1,-1],
+			[0,-1],
+			[-1,1]
 		];
 		diagonalCoords = [
-			[-1, 1],
 			[1, 1],
-			[1, -1],
+			[-1, 1],
 			[-1, -1],
+			[1, -1]
 		]
 		biCoords = [
 			[0,1],
 			[1,0]
 		];
 		interactCoords = [
-			[0,-1],
 			[1,0],
-			[-1,0],
 			[1,1],
-			[-1,1]
+			[-1,1],
+			[-1,0],
+			[0,-1]
 		];
 		squareCoordsShuffle = squareCoords.slice();
 		adjacentCoordsShuffle = adjacentCoords.slice();
@@ -17552,6 +18182,9 @@ behaviorRules = {
 		}
 		function drawLayers(includeBackground) {
 			if (ctx === null) return
+			if (elements[currentElement].renderTool !== undefined) {
+				lastPixelDraw = -10;
+			}
 			clearLayers();
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 			if (currentSaveData.bg && !currentSaveData.bgimg) { // Set background color
@@ -17582,6 +18215,7 @@ behaviorRules = {
 				ctx.drawImage(layerCanvas, 0, 0);
 			}
 		}
+		lastMouseChange = null;
 		function drawCursor() {
 			var layerCtx = canvasLayersCtx.gui;
 			let mouseOffset = mouseSize/2;
@@ -17592,11 +18226,36 @@ behaviorRules = {
 			}
 			var topLeft = [mousePos.x-mouseMin,mousePos.y-mouseMin];
 			var bottomRight = [mousePos.x+mouseMax,mousePos.y+mouseMax];
+
+			if (showGrid) {
+				layerCtx.fillStyle = mouseColor;
+				layerCtx.globalAlpha = showGrid < 2 ? showGrid < 1 ? 0.2 : 0.25 : 0.4;
+				for (let x = showGrid; x <= width+1; x += showGrid) {
+					layerCtx.fillRect(canvasCoord(x), canvasCoord(0), 2, canvasCoord(height+1));
+				}
+				for (let y = height+1; y >= 0; y -= showGrid) {
+					layerCtx.fillRect(canvasCoord(0), canvasCoord(y), canvasCoord(width+1), 2);
+				}
+				layerCtx.globalAlpha = 1;
+			}
+
+			if (lastMouseChange !== null) {
+				if (Date.now() - lastMouseChange > 1000) lastMouseChange = null;
+				const length = mouseSize.toString().length;
+				let numPos;
+				if (mouseSize < 5) numPos = [topLeft[0]-length, topLeft[1]-length];
+				else numPos = [(topLeft[0]+bottomRight[0])/2-length-1, (topLeft[1]+bottomRight[1])/2];
+				drawText(layerCtx, mouseSize.toString(), numPos[0], numPos[1], "#FFFF00", "#000000", 3);
+			}
+
 			// Draw a square around the mouse
-			layerCtx.globalAlpha = mouseAlpha;
-			layerCtx.lineWidth = 2;
-			layerCtx.strokeStyle = mouseColor||settings.mouseColor||"white";
-			layerCtx.strokeRect(topLeft[0]*pixelSize,topLeft[1]*pixelSize,(bottomRight[0]-topLeft[0]+1)*pixelSize,(bottomRight[1]-topLeft[1]+1)*pixelSize);
+			if (!placingStamp) {
+				layerCtx.globalAlpha = mouseAlpha;
+				layerCtx.lineWidth = 2;
+				layerCtx.strokeStyle = mouseColor||settings.mouseColor||"white";
+				layerCtx.strokeRect(topLeft[0]*pixelSize,topLeft[1]*pixelSize,(bottomRight[0]-topLeft[0]+1)*pixelSize,(bottomRight[1]-topLeft[1]+1)*pixelSize);
+			}
+
 			// draw one transparent pixel in the center
 			if (settings.precision) {
 				layerCtx.fillStyle = mouseColor;
@@ -17615,6 +18274,11 @@ behaviorRules = {
 				editingPixels.forEach((pixel) => {
 					drawSquare(layerCtx,mouseColor,pixel.x,pixel.y,undefined,0.5);
 				})
+			}
+
+			// change cursor shape
+			if (canvas.style.cursor !== (currentCursorType||"")) {
+				canvas.style.cursor = currentCursorType;
 			}
 		}
 		function tickPixels() {
@@ -17691,17 +18355,16 @@ behaviorRules = {
 				effects: true,
 				colorEffects: true,
 				pixel: function(pixel,ctx) {
-					var a = (settings.textures !== 0) ? pixel.alpha : undefined;
-					if (((elements[pixel.element].isGas && elements[pixel.element].glow !== false) || elements[pixel.element].glow || pixel.glow) && pixel.glow !== false) {
-						drawPlus(ctx,pixel.color,pixel.x,pixel.y,undefined,a)
-						// if (isEmpty(pixel.x+1,pixel.y) || isEmpty(pixel.x-1,pixel.y) || isEmpty(pixel.x,pixel.y+1) || isEmpty(pixel.x,pixel.y-1)) {}
+					const info = elements[pixel.element];
+					if (((info.isGas && info.glow !== false) || info.glow || pixel.glow) && pixel.glow !== false) {
+						drawPlus(ctx, pixel.color, pixel.x, pixel.y, undefined, (settings.textures !== 0) ? pixel.alpha : undefined)
 					}
 					else {
-						drawSquare(ctx,pixel.color,pixel.x,pixel.y,undefined,a)
+						drawSquare(ctx, pixel.color, pixel.x, pixel.y, undefined, (settings.textures !== 0) ? pixel.alpha : undefined)
 					}
-					if (pixel.charge && view !== 2) { // Yellow glow on charge
-						if (!elements[pixel.element].colorOn) {
-							drawSquare(ctx,"rgb(255,255,0)",pixel.x,pixel.y,undefined,0.5);
+					if (pixel.charge !== undefined) { // Yellow glow on charge
+						if (info.colorOn === undefined) {
+							drawSquare(ctx, "rgb(255,255,0)", pixel.x, pixel.y, undefined, 0.5);
 						}
 					}
 				}
@@ -17731,8 +18394,8 @@ behaviorRules = {
 				colorEffects: true,
 				pixel: function(pixel,ctx) {
 					if (pixel.alpha !== 0) { drawSquare(ctx,pixel.color,pixel.x,pixel.y) }
-					if (pixel.charge && view !== 2) { // Yellow glow on charge
-						if (!elements[pixel.element].colorOn) {
+					if (pixel.charge !== undefined) { // Yellow glow on charge
+						if (elements[pixel.element].colorOn === undefined) {
 							drawSquare(ctx,"rgb(255,255,0)",pixel.x,pixel.y,undefined,0.5);
 						}
 					}
@@ -17916,9 +18579,7 @@ behaviorRules = {
 				if (elements[pixel.element].isGas  || elements[pixel.element].glow ) pixelsLast.push(pixel);
 				else pixelsFirst.push(pixel);
 			}
-			if (hasDeleted ) {
-				currentPixels = currentPixels.filter(currentPixelsFilterTest);
-			}
+			if (hasDeleted) currentPixels = currentPixels.filter(currentPixelsFilterTest);
 			// Draw the current pixels
 			if (!hiding) {
 				let pixelDrawList = pixelsFirst.concat(pixelsLast);
@@ -17937,7 +18598,7 @@ behaviorRules = {
 					for (let i = 0; i < pixelDrawList.length; i++) {
 						let pixel = pixelDrawList[i];
 						if (pixelMap[pixel.x][pixel.y] === undefined) {continue}
-						if (pixel.con) { pixel = pixel.con }
+						if (pixel.con && elements[pixel.element].canContain) { pixel = pixel.con }
 						if (elements[pixel.element].renderer && (settings.textures !== 0 || viewInfo[view].fancy === false)) {
 							elements[pixel.element].renderer(pixel,ctx);
 							if (elements[pixel.element].rendererPost !== undefined) {
@@ -18018,6 +18679,7 @@ behaviorRules = {
 		currentElementProp = null;
 		storedElement = null;
 		prevElement = null;
+		prevElementProp = null;
 		function defaultSaveData() {
 			return {
 				"loaded": false,
@@ -18051,6 +18713,7 @@ behaviorRules = {
 		changedMods = false;
 		forceReload = false;
 		nextElemID = 1;
+		strokePixels = 0;
 		refreshMaxPixels();
 		// detect if mobile
 		if ((navigator.userAgent && (navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) || navigator.userAgent.match(/iPhone/i) ||
@@ -18067,12 +18730,25 @@ behaviorRules = {
 			settings.invertscroll = true;
 		}
 		mouseType = null;
-		function mouseClick(e) {
+		function mouseClick(e) { //mouseDown
+			if (e.touches !== undefined) e = e.touches[0];
+			tempTool = null;
+			strokePixels = 0;
+			lastPos = mousePos;
+			mousePos = getMousePos(canvas, e);
+			if (outOfSight(mousePos.x, mousePos.y)) {
+				return false;
+			}
 			if (showingMenu && currentElement !== "lookup") {
 				closeMenu();
 				return false;
 			}
+			if (currentElement !== "unknown") historyLog();
 			mouseIsDown = true;
+			lastMouseChange = null;
+			if (!showingMenu && elements[currentElement] && elements[currentElement].onMouseDown && !e.button) {
+				elements[currentElement].onMouseDown(e);
+			}
 			lastPlace = -100;
 			if (e.button === 0) {
 				mouseType = "left";
@@ -18086,10 +18762,15 @@ behaviorRules = {
 			else {
 				mouseType = "left";
 			}
-			if ((e.button === 0 || e.touches) && placingImage) {
+			if ((e.button === 0 || e.touches) && (placingImage || placingStamp)) {
 				if (e.touches) { mouseMove(e); }
-				placeImage();
+				if (placingImage) placeImage();
+				else placeStamp();
 				return false;
+			}
+			else if (shiftDown && shiftDown % 2 === 0 && e.button !== 1) {
+				selectElement("select");
+				elements[currentElement].onMouseDown(e);
 			}
 			else if (shiftDown && e.button !== 1 && !((elements[currentElement].tool || elements[currentElement].category==="tools") && mouseType==="left" && !elements[currentElement].canPlace && currentElement !== "erase")) {
 				shaping = 1;
@@ -18152,7 +18833,7 @@ behaviorRules = {
 						if (isEmpty(pixelX,pixelY)) {
 							if (elem === "paint") { continue }
 							createPixel(elem,pixelX,pixelY);
-							pixelMap[pixelX][pixelY].color = pixelColorPick(pixelMap[pixelX][pixelY], RGBToHex([r,g,b]));
+							pixelMap[pixelX][pixelY].color = pixelColorPick(pixelMap[pixelX][pixelY], RGBToHex([r,g,b]), 0.5);
 						}
 						else if (!outOfBounds(pixelX,pixelY)) {
 							if (shiftDown || mode === "replace") {
@@ -18161,26 +18842,92 @@ behaviorRules = {
 							else if (elem !== "paint") {
 								continue;
 							}
-							pixelMap[pixelX][pixelY].color = pixelColorPick(pixelMap[pixelX][pixelY], RGBToHex([r,g,b]));
+							pixelMap[pixelX][pixelY].color = pixelColorPick(pixelMap[pixelX][pixelY], RGBToHex([r,g,b]), 0.5);
 						}
 					}
 				}
 			}
+			hasEditedCanvas = true;
+		}
+		function placeStamp() {
+			if (!placingStamp) return;
+
+			historyLog();
+
+			placingStamp = JSON.parse(JSON.stringify(placingStamp));
+			let relationMap = {};
+
+			let stampWidth = placingStamp.length;
+			let stampHeight = placingStamp[0].length;
+			let startX = Math.round(mousePos.x - (stampWidth/2));
+			let startY = Math.round(mousePos.y - (stampHeight/2));
+
+			for (var x = 0; x < placingStamp.length; x++) {
+				for (var y = 0; y < placingStamp[x].length; y++) {
+					const pixel = placingStamp[x][y];
+					if (!pixel) continue;
+					pixel.x = startX+x;
+					pixel.y = startY+y;
+					if (isNaN(pixel.temp)) pixel.temp = currentSaveData.airtemp;
+					if (isNaN(pixel.start)) pixel.start = pixelTicks;
+					if (outOfBounds(pixel.x,pixel.y)) continue;
+					if (pixel._r) {
+						if (!relationMap[pixel._r]) {
+							relationMap[pixel._r] = currentRelations._id;
+							currentRelations._id++;
+						}
+						pixel._r = relationMap[pixel._r];
+					}
+
+					const oldPixel = getPixel(pixel.x, pixel.y);
+					if (oldPixel) {
+						if (mode === "replace") deletePixel(pixel.x, pixel.y);
+						else continue;
+					}
+
+					pixelMap[pixel.x][pixel.y] = pixel;
+					currentPixels.push(pixel);
+				}
+			}
+
+			for (const id in relationMap) {
+				getRelation(relationMap[id]);
+			}
+
+			if (!shiftDown) {
+				placingStamp = null;
+				selectPrevElement();
+				currentElementProp = null;
+				disableElement("copy");
+				disableElement("cut");
+			}
+
+			mouseIsDown = false;
 		}
 		function mouseUp(e) {
+			// if (e.touches !== undefined) e = e.touches[0];
+			// console.log("strokePixels", strokePixels)
+			if (mouseIsDown && strokePixels === 0 && !shaping) historyPop();
+			const wasDown = mouseIsDown;
 			mouseIsDown = false;
-			if (shaping) {
+			strokePixels = 0;
+			if (shaping !== 0) {
 				if (shaping === 1) { // Draw a line
 					mouseAction(null,mousePos.x,mousePos.y,shapeStart);
 				}
 				shaping = 0;
 				shapeStart = null;
+				if (strokePixels === 0) historyPop();
 			}
 			if (e.button === 2) {
-				if (elements.erase && elements.erase.onMouseUp) elements.erase.onMouseUp();
+				if (elements.erase !== undefined && elements.erase.onMouseUp !== undefined) {
+					elements.erase.onMouseUp();
+				}
 			}
-			else if (elements[currentElement] && elements[currentElement].onMouseUp) {
-				elements[currentElement].onMouseUp(e);
+			else {
+				if (elements[currentElement] !== undefined && elements[currentElement].onMouseUp !== undefined && wasDown) {
+					elements[currentElement].onMouseUp(e);
+				}
 			}
 			tempTool = null;
 		}
@@ -18204,14 +18951,16 @@ behaviorRules = {
 		}
 		function mouseMove(e) {
 			//updateStats();
-			if (mouseIsDown && !shaping && !placingImage) {
+			if (mouseIsDown && !shaping && !placingImage && !placingStamp) {
 				mouseAction(e);
+				lastPos = mousePos;
 			}
 			else {
 				lastPos = mousePos;
 				if (!hiding) mousePos = getMousePos(gameCanvas, e);
 			}
 			if (tps < 30) lastPixelDraw = -10;
+			lastMouseChange = null;
 		}
 		function mouseAction(e,mouseX,mouseY,startPos) {
 			hasEditedCanvas = true;
@@ -18255,7 +19004,7 @@ behaviorRules = {
 				var mouseY = mousePos.y;
 			}
 			var cooldowned = false;
-			if (mouseSize===1 && elements[currentElement].cooldown && !paused) {
+			if ((mouseSize===1 || elements[currentElement].tool) && elements[currentElement].cooldown && !paused) {
 				if (pixelTicks-lastPlace < elements[currentElement].cooldown) {
 					return;
 				}
@@ -18269,12 +19018,8 @@ behaviorRules = {
 				startPos = startPos || lastPos
 				var coords = lineCoords(startPos.x,startPos.y,mouseX,mouseY);
 			}
-			// if (!((cooldowned && startPos.x===lastPos.x && startPos.y===lastPos.y) || ((elements[currentElement].tool || elements[currentElement].category==="tools") && !elements[currentElement].canPlace))) {
-			// }
-			// else { var coords = mouseRange(mouseX,mouseY); }
 			var element = elements[currentElement];
 			var mixList = [];
-			// For each x,y in coords
 			var done = {};
 			for (var i = 0; i < coords.length; i++) {
 				var x = coords[i][0];
@@ -18284,6 +19029,7 @@ behaviorRules = {
 				}
 				if (done[x][y]) continue;
 				done[x][y] = true;
+				let affected = false;
 
 				if (outOfSight(x,y)) continue;
 				
@@ -18303,12 +19049,14 @@ behaviorRules = {
 						}
 						if (!(currentElement === existingPixel.element && existingPixel.start === pixelTicks-1)) {
 							deletePixel(x,y);
+							affected = true;
 						}
 					}
 					else if (replaceFilter !== null) continue;
 				}
 				else if (existingPixel !== null && elements[existingPixel.element].onClicked && currentElement !== existingPixel.element) {
 					elements[existingPixel.element].onClicked(existingPixel,currentElement === "unknown" ? null : currentElement);
+					affected = true;
 				}
 
 				if (currentElement === "mix") {
@@ -18317,6 +19065,7 @@ behaviorRules = {
 						if (pixel.del) continue;
 						if (!(elements[pixel.element].movable !== true || elements[pixel.element].noMix ) || shiftDown) {
 							mixList.push(pixel);
+							strokePixels ++;
 						}
 					}
 					continue;
@@ -18329,7 +19078,7 @@ behaviorRules = {
 						if (elements[currentElement].ignore && elements[currentElement].ignore.indexOf(pixel.element) !== -1) {
 							continue;
 						}
-						elements[currentElement].tool(pixel);
+						if (elements[currentElement].tool(pixel) !== false) strokePixels ++;
 					}
 					continue;
 				}
@@ -18342,10 +19091,11 @@ behaviorRules = {
 							}
 							if (currentElementProp) {
 								for (var key in currentElementProp) {
-									pixelMap[x][y][key] = currentElementProp[key]
+									pixelMap[x][y][key] = currentElementProp[key];
 								}
 							}
 						}
+						affected = true;
 					}
 				}
 				else if (!outOfBounds(x,y)) {
@@ -18354,9 +19104,11 @@ behaviorRules = {
 						if (pixel.burning && elements[pixel.element].burning !== true) {
 							delete pixel.burning;
 							delete pixel.burnStart;
+							affected = true;
 						}
 					}
 				}
+				if (affected === true) strokePixels ++;
 			}
 			if (currentElement === "mix") {
 				// 1. repeat for each pixel in mixList
@@ -18379,6 +19131,12 @@ behaviorRules = {
 			}
 		}
 		function mouse2Action(e,mouseX=undefined,mouseY=undefined,startPos) {
+			if (placingStamp) {
+				placingStamp = null;
+				if (currentElement === "paste") selectPrevElement();
+				mouseIsDown = false;
+				return;
+			}
 			// Erase pixel at mouse position
 			if (mouseX === undefined && mouseY === undefined) {
 				lastPos = mousePos;
@@ -18411,7 +19169,10 @@ behaviorRules = {
 					if (outOfBounds(x,y)) {
 						continue
 					}
-					if (elements.erase) elements.erase.tool(pixelMap[x][y])
+					if (elements.erase) {
+						elements.erase.tool(pixelMap[x][y]);
+						strokePixels ++;
+					}
 				}
 			}
 		}
@@ -18438,7 +19199,7 @@ behaviorRules = {
 				return;
 			}
 			lastScroll = new Date().getTime();
-			var deltaY = e.deltaY;
+			let deltaY = e.deltaY;
 			if (settings.invertscroll) {
 				if (deltaY > 0) { deltaY = 1; }
 				else { deltaY = -1; }
@@ -18451,40 +19212,7 @@ behaviorRules = {
 			mouseSize += Math.round(deltaY)  * (shiftDown ? 3 : 1);
 			checkMouseSize(Math.sign(deltaY));
 		}
-		function chooseElementPrompt() {
-			if (promptState && promptState.id === "elem") {
-				delete promptState.id;
-				closeMenu();
-				return;
-			}
-			promptInput("Enter the element's ID or name.",
-				(e) => {
-					if (!e) { return; }
-					// replace spaces with underscores
-					e = e.replace(/ /g, "_");
-					es = mostSimilarElement(e);
-					if (es !== null) {
-						selectElement(es);
-						selectCategory(elements[es].category);
-						if (shiftDown && elements[currentElement].onShiftSelect) {
-							elements[currentElement].onShiftSelect(currentElement);
-							if (promptState) promptState.after = function() {
-								if (currentElementProp) {
-									let btn = document.getElementById("elementButton-"+currentElement);
-									if (btn) btn.setAttribute("modified", "true");
-								}
-							}
-						}
-					}
-					else {
-						logMessage("Element \"" + e + "\" not found");
-					}
-					focusGame();
-				},
-				"Select Element"
-			);
-			promptState.id = "elem";
-		}
+		function chooseElementPrompt() { /*deprecated*/ }
 		function togglePause() {
 			paused = !paused;
 			if (paused) {
@@ -18512,7 +19240,11 @@ behaviorRules = {
 			}
 		}
 		function resetPrompt(confirmed=false) {
-			if (confirmed || settings.resetwarning === 0 || currentPixels.length===0 || !hasEditedCanvas) {
+			if (showingMenu === "prompt" && promptState.id === "reset") {
+				closeMenu();
+				return;
+			}
+			if (confirmed || settings.resetwarning === 0 || (currentPixels.length===0 && historyIndex===null) || !hasEditedCanvas) {
 				if (changedMods) {
 					forceReload = true;
 					location.reload();
@@ -18528,6 +19260,7 @@ behaviorRules = {
 			promptState = {
 				text: "Are you sure you want to clear the whole scene?",
 				title: "Clear Canvas",
+				id: "reset",
 			handler: (r) => {
 				if (r) resetPrompt(true);
 				if (isOnSite && !standalone) {
@@ -18568,7 +19301,12 @@ behaviorRules = {
 				(r) => {
 					var newtps = parseInt(r);
 					if (r !== null) {
-						if (isNaN(newtps) || newtps == "") logMessage("You did not enter a valid TPS.");
+						if (newtps === 0) {
+							paused = true;
+							manualPaused = true;
+							checkPause();
+						}
+						else if (isNaN(newtps) || newtps == "") logMessage("You did not enter a valid TPS.");
 						else if (newtps > 1000) {
 							logMessage("You entered a TPS that is too high. The TPS will be set to the maximum, 1000.");
 							tps = 1000;
@@ -18576,7 +19314,7 @@ behaviorRules = {
 						}
 						else {
 							newtps = parseInt(newtps);
-							if (isNaN(newtps) || newtps <= 0) {
+							if (isNaN(newtps) || newtps < 0) {
 								logMessage("You did not enter a valid TPS.");
 							}
 							else {
@@ -18618,7 +19356,24 @@ behaviorRules = {
 			}
 			showPromptScreen();
 		}
+		function showGameInfo() {
+			if (showingMenu === "gameInfo") {
+				closeMenu();
+				return;
+			}
+			closeMenu();
+			var settingsParent = document.getElementById("gameInfoParent");
+			settingsParent.style.display = "block";
+			showingMenu = "gameInfo";
+			checkMenuState();
+			paused = true;
+			checkPause();
+		}
 		function showChangelog() {
+			if (showingMenu === "prompt" && promptState.id === "changelog") {
+				closeMenu();
+				return;
+			}
 			promptState = {
 				text: "",
 				title: "",
@@ -18627,7 +19382,8 @@ behaviorRules = {
 				`,
 				type: "text",
 				full: true,
-				tall: true
+				tall: true,
+				id: "changelog"
 			}
 			showPromptScreen();
 		}
@@ -18644,6 +19400,7 @@ behaviorRules = {
 
 		function toggleReplaceMode() {
 			let btn = document.getElementById("replaceButton");
+			replaceFilter = null;
 			if (mode == "replace") {
 				mode = null;
 				btn.setAttribute("on","false");
@@ -18688,27 +19445,33 @@ behaviorRules = {
 			editMode = true;
 		}
 
-		function selectElement(element) {
-			tempTool = null;
-			if (!elements[element]) { element = "unknown" }
+		function selectElement(element, properties=null) {
+			if (!element) element = "unknown";
+			if (!elements[element]) return false;
 			if (showingMenu == "prompt") {
 				closeMenu();
 			}
 			if (elements[element].locked ) {
 				logMessage("This element is locked.");
-				return;
+				return false;
 			}
 			if (elements[currentElement].onUnselect) {
-				elements[currentElement].onUnselect();
+				if (elements[currentElement].onUnselect(element) === false) return;
 			}
+			tempTool = null;
+			currentCursorType = null;
+			lastMouseSize = mouseSize;
 			var e1 = document.getElementById("elementButton-"+currentElement);
 			if (e1 !== null) {
 				e1.setAttribute("current","false");
 				e1.setAttribute("modified","false");
 			}
-			prevElement = currentElement;
+			if (currentElement !== element) {
+				prevElement = currentElement;
+				prevElementProp = currentElementProp;
+			}
 			currentElement = element;
-			currentElementProp = null;
+			currentElementProp = properties;
 			if (elements[element].customColor) {
 				// show the colorSelector
 				document.getElementById("colorSelector").style.display = "block";
@@ -18751,6 +19514,11 @@ behaviorRules = {
 			}
 			checkMouseSize();
 		}
+		function selectPrevElement() {
+			if (prevElement) selectElement(prevElement, prevElementProp);
+			else selectElement(firstElement);
+			if (currentElement !== "unknown") selectCategory(elements[currentElement].category);
+		}
 		function editDistance(s1, s2) {s1 = s1.toLowerCase();s2 = s2.toLowerCase();var costs = new Array();for (var i = 0; i <= s1.length; i++) {var lastValue = i;for (var j = 0; j <= s2.length; j++) {if (i == 0)costs[j] = j;else {if (j > 0) {var newValue = costs[j - 1];if (s1.charAt(i - 1) !== s2.charAt(j - 1))newValue = Math.min(Math.min(newValue, lastValue),costs[j]) + 1;costs[j - 1] = lastValue;lastValue = newValue;}}}if (i > 0)costs[s2.length] = lastValue;}return costs[s2.length];}
 		function similarity(s1, s2) {var longer = s1;var shorter = s2;if (s1.length < s2.length) {longer = s2;shorter = s1;}var longerLength = longer.length;if (longerLength == 0) {return 1.0;}return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);}
 		function mostSimilarElement(s) {
@@ -18758,7 +19526,7 @@ behaviorRules = {
 			var max = 0;
 			var maxElement = "";
 			for (var e in elements) {
-				if (elements[e].locked ) continue;
+				if (elements[e].locked) continue;
 				var sim = similarity(e,s);
 				if (sim > max) {
 					max = sim;
@@ -18786,11 +19554,14 @@ behaviorRules = {
 		}
 		function selectCategory(category) {
 			if (!category) { return; }
-			var categoryButton = document.getElementById("categoryButton-"+category);
-			if (!categoryButton) {return}
-			if (editMode) {
+			if (category === "edit") {
+				if (!editMode) toggleEditMode();
+			}
+			else if (editMode) {
 				toggleEditMode();
 			}
+			var categoryButton = document.getElementById("categoryButton-"+category);
+			if (!categoryButton) {return}
 			// if categoryButton has the class "notify", remove it
 			if (categoryButton.classList.contains("notify")) {
 				categoryButton.classList.remove("notify");
@@ -18826,12 +19597,14 @@ behaviorRules = {
 			mousePos = {x:Math.round(width/2),y:Math.round(height/2)};
 		}
 
-		function handleElementButtonClick() {
-			if (currentElement === this.getAttribute("element")) {
+		function handleElementButtonClick(btn) {
+			if (btn.classList.contains("disabled")) return;
+
+			if (currentElement === btn.getAttribute("element")) {
 				selectElement("unknown");
 			}
 			else {
-				selectElement(this.getAttribute("element"));
+				selectElement(btn.getAttribute("element"));
 				if (shiftDown && elements[currentElement].onShiftSelect) {
 					elements[currentElement].onShiftSelect(currentElement);
 					if (promptState) promptState.after = function() {
@@ -18842,6 +19615,17 @@ behaviorRules = {
 					}
 				}
 			}
+		}
+		function disableElement(element) {
+			if (!elements[element]) return;
+			let button = document.getElementById("elementButton-" + element);
+			if (button) button.classList.add("disabled");
+			if (currentElement === element) selectElement("unknown");
+		}
+		function enableElement(element) {
+			if (!elements[element]) return;
+			let button = document.getElementById("elementButton-" + element);
+			if (button) button.classList.remove("disabled");
 		}
 		function elemTitleCase(string) {
 			string = string.replace(/_./g, function (match) {return match.toUpperCase();}).replace(/_/g, '');
@@ -18869,9 +19653,9 @@ behaviorRules = {
 				return newList.join(",");
 			}
 			string = string.trim().replace(/ /g, "_");
-			if (validDensitySwaps[string]) return string;
-			string = mostSimilarElement(string);
+			if (validDensitySwaps[string] || string === "any") return string;
 			if (string === "null" || string === "air") return "unknown";
+			string = mostSimilarElement(string);
 			return elements[string] ? string : "unknown";
 		}
 		function createElementButton(element) {
@@ -18929,13 +19713,25 @@ behaviorRules = {
 				button.style.boxShadow = "0px 0px 20px "+elements[element].buttonGlow
 			}
 			button.id = "elementButton-" + element;
-			if (elements[element].locked) button.classList.add("disabled");
-			button.onclick = handleElementButtonClick;
+			if (elements[element].locked || elements[element].disabled) button.classList.add("disabled");
+			button.onclick = function(e) {
+				handleElementButtonClick(this);
+			}
 			// on right click, show the element's info
 			button.oncontextmenu = function(e) {
 				e.preventDefault();
 				closeMenu();
 				showInfo(this.getAttribute("element"));
+			}
+			button.onauxclick = function(e) {
+				if (e.button !== 1) return;
+				
+				let old = shiftDown;
+				shiftDown = 1;
+				handleElementButtonClick(this);
+
+				shiftDown = old;
+				e.preventDefault();
 			}
 			if (!elements[element].category) {
 				elements[element].category = "other";
@@ -18956,6 +19752,11 @@ behaviorRules = {
 			categoryButton.setAttribute("category",category);
 			categoryButton.onclick = function() {
 				selectCategory(this.getAttribute("category"));
+			}
+			categoryButton.oncontextmenu = function(e) {
+				e.preventDefault();
+				closeMenu();
+				showInfo(this.getAttribute("category"));
 			}
 			document.getElementById("categoryControls").appendChild(categoryButton);
 			var categoryDiv = document.createElement("div");
@@ -19194,18 +19995,30 @@ behaviorRules = {
 		}
 		function updateStats() {
 			if (!statEls && !initStats()) return;
-			if (hiding) setStat("pos", null, false);
+			if (hiding || isMobile) setStat("pos", null, false);
 			else setStat("pos", "x"+mousePos.x+",y"+mousePos.y);
 			var atMax = currentPixels.length >= Math.min(maxPixelCount,(height+1)*(width+1));
-			setStat("pixels", currentPixels.length+"pxls");
+			setStat("pixels", currentPixels.length+(isMobile ? "px" : "pxls"));
 			if (statCache.atMax !== atMax) { statCache.atMax = atMax; statEls.pixels.classList.toggle("redText", atMax); }
-			setStat("tps", (paused ? 0 : tps)+"tps");
+			const _tps = (paused ? 0 : tps);
+			if (isMobile && _tps === 30) setStat("tps", null, false);
+			else {
+				setStat("tps", _tps+"tps");
+				if (tps !== 30) {
+					statEls.tps.modified = true;
+					statEls.tps.setAttribute("modified", "true");
+				}
+				else if (statEls.tps.modified) {
+					statEls.tps.modified = false;
+					statEls.tps.removeAttribute("modified");
+				}
+			}
 			if (settings.showticks === 1) setStat("ticks", pixelTicks);
 			//setStat("ticks", pixelTicks);
 			if ((typeof pixelMap).length === 9) { return; }
 			var currentPixel = pixelMap[mousePos.x] !== undefined ? pixelMap[mousePos.x][mousePos.y] : undefined;
 			var hasPixel = currentPixel !== undefined;
-			if (hasPixel) {
+			if (hasPixel && !hiding) {
 				var elemLabel = langKey("gui.stats.elem","Elem")+":";
 				var elemName = (elements[currentPixel.element].name || currentPixel.element).toUpperCase();
 				if (statCache.elemLabel !== elemLabel) { statCache.elemLabel = elemLabel; statEls.element.firstChild.textContent = elemLabel; }
@@ -19234,7 +20047,7 @@ behaviorRules = {
 			var cloneText = null;
 			if (hasPixel && !hoverText) {
 				if (currentPixel.clone) cloneText = currentPixel.clone.toString().toUpperCase().replaceAll("<","&lt;");
-				else if (currentPixel.con && currentPixel.con.element) cloneText = currentPixel.con.element.toString().toUpperCase().replaceAll("<","&lt;");
+				else if (currentPixel.con && currentPixel.con.element && elements[currentPixel.element].canContain) cloneText = currentPixel.con.element.toString().toUpperCase().replaceAll("<","&lt;");
 			}
 			setStat("clone", cloneText, !!cloneText);
 			setStat("shift", shiftDown ? shiftDownTypes[shiftDown] : null, !!shiftDown);
@@ -19259,20 +20072,22 @@ behaviorRules = {
 			else if (density > 10) { digits = 1; }
 			// default/metric = kg/m3, imperial = lb/ft3, si = g/cm3
 			if (!settings["units"] || settings["units"] === "m") { // kg/m3
-				return density.toFixed(digits)+" kg⁄m<sup>3</sup>"
+				return density.toFixed(digits)+" kg⁄m³"
 			}
 			else if (settings["units"] === "i") { // lb/ft3
-				return (density/16.018).toFixed(digits)+" lb⁄ft<sup>3</sup>"
+				return (density/16.018).toFixed(digits)+" lb⁄ft³"
 			}
 			else if (settings["units"] === "s") { // g/cm3
 				// round to 2 decimal places
-				return ((density/10)/100).toFixed(digits)+" g⁄cm<sup>3</sup>"
+				return ((density/10)/100).toFixed(digits)+" g⁄cm³"
 			}
 		}
 
 		showingMenu = false;
-		function infoLink(l) {
+		infoMatch = null;
+		function infoLink(l, hide=false) {
 			if (l instanceof Array) {
+				l = [...new Set(l)];
 				var newtext = "";
 				for (var i = 0; i < l.length; i++) {
 					var element = l[i];
@@ -19280,322 +20095,365 @@ behaviorRules = {
 					// add to newtext a span with the element's name and its onclick to showInfo(element)
 					if (element=="pixels" || element=="itself") { newtext += element+", "}
 					else if (!elements[element]) { continue }
-					else { newtext += "<button class='infoLink' onclick='showInfo(\""+element+"\")'>"+(elements[element].name || element).toUpperCase().replace(/_/g," ")+"</button>, ";}
+					// else { newtext += "<button class='infoLink' onclick='showInfo(\""+element+"\")'>"+(elements[element].name || element).toUpperCase().replace(/_/g," ")+"</button>, ";}
+					else { newtext += infoLink(element, hide) + ", ";}
 				}
 				// remove the last comma and space
 				newtext = newtext.substring(0, newtext.length-2);
 				return newtext
 			}
 			else {
-				if (l === null) { return "air" }
-				if (l === undefined) { return "[???]" }
-				if (l=="pixels" || l=="[???]" || l=="itself") {return l}
-				else {return "<button class='infoLink' onclick='showInfo(\""+l+"\")'>"+l.toUpperCase().replace(/_/g," ")+"</button>";}
+				if (l === null) return "AIR";
+				if (l === undefined) return "[???]";
+				if (l === "pixels" || l === "[???]" || l === "itself") return l;
+				else if (hide === true && elements[l] && elements[l].hidden && !settings.unlocked[l] && settings.unhide !== 1) return "<span class='infoHidden'>???</span>";
+				else {return "<button class='infoLink' onclick='showInfo(\""+l+"\")'>"+(elements[l] ? (elements[l].name||l) : l).toUpperCase().replace(/_/g," ")+"</button>";}
 			}
 		}
-function showInfo(element,back=false) { // this is such a mess please don't look at it
-	paused = true;
-	checkPause();
-	showingMenu = "info";
-	var infoParent = document.getElementById("infoParent");
-	infoParent.style.display = "block";
-	var infoSearch = document.getElementById("infoSearch");
-	infoSearch.focus();
-	var infoTitle = document.getElementById("infoTitle");
-	var infoText = document.getElementById("infoText");
-	var error = false;
-	if (element !== undefined) {
-		// replace all spaces with underscores
-		element = element.replace(/ /g,"_").toLowerCase();
-		infoSearch.value = element.toUpperCase();
-		let info = elements[element];
-		if (info) {
-			infoTitle.innerHTML = info.name || element.replace(/_/g," ");
-			infoTitle.innerHTML = infoTitle.innerHTML.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+		function showInfo(query="", back=false, updateInput=true) {
+			paused = true;
+			checkPause();
+			showingMenu = "info";
+			checkMenuState();
+			const infoParent = document.getElementById("infoParent");
+			const infoSearch = document.getElementById("infoSearch");
+			if (infoParent.style.display !== "block") {
+				infoParent.style.display = "block";
+				infoSearch.focus();
+			}
+			infoSearch.classList.remove("error");
+			const infoTitle = document.getElementById("infoTitle");
+			const infoSubtitle = document.getElementById("infoSubtitle");
+			const infoText = document.getElementById("infoText");
+			infoTitle.innerHTML = "Search";
+			infoSubtitle.innerHTML = "";
 			infoText.innerHTML = "";
-			if (info.hidden && !settings.unlocked[element]) { infoText.innerHTML += "You haven't discovered this yet.\n" }
-			if (info.color) {
-				if (!(info.color instanceof Array)) {
-					infoText.innerHTML += "Color: <span style='background-color:"+info.color+"'>	 </span>";
+			document.getElementById("infoScreen").scrollTop = 0
+			if (updateInput) infoSearch.value = query;
+
+			if (Array.isArray(query)) {
+				if (!query.length) {
+					// closeMenu();
+					return;
+				}
+				if (query.length !== 1) {
+					infoSubtitle.innerHTML = "Select one.";
+					infoText.innerHTML = `<div class='infoGrid'>${query.map(q => infoLink(q)).join("")}</div>`;
+					// display each in array (lookup tool)
+					infoSearch.value = "";
+					return;
+				}
+				query = query[0];
+			}
+
+			// console.log(query);
+			if (!query || !query.trim()) {
+				infoSubtitle.innerText = "Type an element or category.";
+				infoText.innerHTML = `<div class="infoGrid">${infoLink("all")} ${infoLink("undiscovered")} ${infoLink("discovered")}</div><div class="infoGrid">${categoryList.map(q => infoLink(q)).join("")} ${infoLink("hidden")}</div>`
+				return;
+			}
+
+			query = query.trim().replace(/ /g,"_").toLowerCase();
+
+			if (query === "all") {
+				let results = Object.keys(elements).sort();
+				infoTitle.innerText = "ELEMENTS";
+				infoSubtitle.innerText = "All elements.";
+				infoText.innerHTML = `<div class="infoGrid">${results.map(q => infoLink(q)).join("")}</div>`
+				return;
+			}
+			
+			if (query === "undiscovered") {
+				let results = [];
+				for (const element in elements) {
+					if (elements[element].hidden === true && !settings.unlocked[element]) results.push(element);
+				}
+				infoTitle.innerText = "UNDISCOVERED";
+				infoSubtitle.innerText = "You haven't made these yet.";
+				infoText.innerHTML = `<div class="infoGrid">${results.sort().map(q => infoLink(q)).join("")}</div>`
+				return;
+			}
+			
+			if (query === "discovered") {
+				let results = [];
+				for (const element in elements) {
+					if (elements[element].hidden === true && settings.unlocked[element]) results.push(element);
+				}
+				infoTitle.innerText = "UNDISCOVERED";
+				infoSubtitle.innerText = "You've made these hidden elements.";
+				infoText.innerHTML = `<div class="infoGrid">${results.sort().map(q => infoLink(q)).join("")}</div>`
+				return;
+			}
+
+			if (query === "hidden") {
+				let results = [];
+				for (const element in elements) {
+					if (elements[element].hidden === true) results.push(element);
+				}
+				infoTitle.innerText = "HIDDEN";
+				infoSubtitle.innerText = "Hidden by default.";
+				infoText.innerHTML = `<div class="infoGrid">${results.sort().map(q => infoLink(q)).join("")}</div>`
+				return;
+			}
+
+			if (categoryList.includes(query)) {
+				let results = [];
+				for (const element in elements) {
+					if (elements[element].category === query) results.push(element);
+				}
+				infoTitle.innerText = query.toUpperCase();
+				infoSubtitle.innerText = "Category results.";
+				infoText.innerHTML = `<div class="infoGrid">${results.sort().map(q => infoLink(q)).join("")}</div>`
+				return;
+			}
+
+			if (elements[query] === undefined && query !== "air") {
+				let results = [];
+				let exactMatch = null;
+				let regex = new RegExp(query, "i");
+				for (const element in elements) {
+					if (results.length >= 10) break;
+					
+					if (element.match(regex)) {results.push(element); continue}
+					const info2 = elements[element];
+					if (info2.alias) {
+						let found = false;
+						if (Array.isArray(info2.alias)) {
+							if (info2.alias.includes(query)) {exactMatch = element; break}
+							info2.alias.forEach(a => {
+								a = a.toLowerCase();
+								if (found) return;
+								if (a === query)  {exactMatch = element; found=true; return}
+								if (a.match(regex))  {results.push(element); found = true}
+							})
+						}
+						else {
+							const alias = info2.alias.toLowerCase();
+							if (alias === query) {exactMatch = element; break}
+							if (alias.match(regex)) {results.push(element); continue}
+						}
+						if (found) continue;
+					}
+					if (info2.name) {
+						if (info2.name === info2) {exactMatch = element; break}
+						if (info2.name.match(regex)) {results.push(element); continue}
+					}
+				}
+				infoSubtitle.innerText = "Press Enter to select closest match.";
+				if (exactMatch) query = exactMatch;
+				else if (results.length) {
+					results.sort((a,b) => (a.length + (a.startsWith(query) ? 0 : 100)) - (b.length + (b.startsWith(query) ? 0 : 100)));
+					infoMatch = results[0];
+					infoText.innerHTML = `<div class="infoGrid">${results.map(q => infoLink(q)).join("")}</div>`
+					infoSearch.classList.add("error");
+					return;
 				}
 				else {
-					//gradient
-					var gradient = info.color;
-					var gradientString = "linear-gradient(to right";
-					for (var i = 0; i < gradient.length; i++) {
-						gradientString += ", "+gradient[i]+" "+(i*100/gradient.length)+"%";
-					}
-					gradientString += ")";
-					infoText.innerHTML += "Color: <span style='background:"+gradientString+"'>	 </span>";
+					infoSubtitle.innerText = "No results found.\n\n" + infoSubtitle.innerText;
+					infoSearch.classList.add("error");
+					infoMatch = null;
+					return;
 				}
 			}
-			if (info.desc) {
-				infoText.innerHTML += "\n"+info.desc;
-			}
-			else if (info.extraInfo) {
-				infoText.innerHTML += "\n"+info.extraInfo;
-			}
 
-			var moves = false;
-			var deletes = [];
-			var swaps = [];
-			var creates = [];
-			var heats = false;
-			var cools = false;
-			var clones = false;
-			var explodes = false;
-			var sticks = [];
+			if (elements[query]) infoMatch = query;
+			else infoMatch = null;
+
+			const info = query === "air" ? {
+				"colorObject": {r:0, g:0, b:0},
+				"alpha": 0,
+				"category": "special",
+				"state": "gas",
+				"density": currentSaveData.airdensity,
+				"movable": true
+			} : elements[query];
+
+			let tags = {};
+			let states = {};
+			let sections = [
+				// ["label1", "value1"],
+				// ["value2"],
+				// ["label3", "value3"],
+				// "value4",
+			];
+
+			let desc = info.desc || info.extraInfo;
+			if (info.tool) {
+				if (desc) desc = ["tool", desc];
+				else if (!info.canPlace) tags.tool = true;
+			}
+			if (desc) sections.push(desc);
+
+			let color = info.colorObject;
+			if (!Array.isArray(color)) {
+				color = [{r: color.r+10, g: color.g+10, b: color.b+10}, color, {r: color.r-10, g: color.g-10, b: color.b-10}];
+			}
+			let gradientStep = -1;
+			let gradient = `linear-gradient(to bottom right, ${color.map(c => {
+				gradientStep++;
+				return `rgb(${c.r},${c.g},${c.b}) ${gradientStep*100/(color.length-1)}%`;
+			}).join(", ")})`;
+
+			tags[info.state || "solid"] = true;
+			tags[info.movable ? "movable" : "stationary"] = true;
+			tags[info.insulate ? "insulative" : "_"] = true;
+			tags[info.isFood ? "edible" : "_"] = true;
+			if (info.viscosity >= 9000) tags.viscous = true;
+			if (info.hidden) tags[settings.unlocked[query] ? "discovered" : "hidden"] = true;
+
+			if (info.hardness <= 0.2) tags.brittle = true;
+			else if (info.hardness >= 0.75) tags.strong = true;
+			if (info.breakInto) {
+				sections.push(`Breaks${!info.hardness ? "" : info.hardness >= 0.75 ? " rarely" : info.hardness <= 0.2 ? " easily" : ""} into ${infoLink(info.breakInto)}.`);
+			}
+			else if (info.onBreak) tags.breakable = true;
+
+			if (info.infoTags) info.infoTags.forEach(t => tags[t] = true);
+
+			let behaviorRules = {};
 			if (info.behavior) {
-// for x and y in behavior array
-for (var i = 0; i < info.behavior.length; i++) {
-for (var j = 0; j < info.behavior[i][1].length; j++) {
-var b0 = info.behavior[i][j];
-if (!b0) { continue; }
-for (var k = 0; k < b0.split(" AND ").length; k++) {
-	var b = b0.split(" AND ")[k];
-	// remove everything after %
-	b = b.split("%")[0];
-	if (b.indexOf(":") !== -1) {
-		var arg = b.split(":")[1];
-	}
-	else { var arg = undefined }
-	var b = b.split(":")[0];
-	if (b == "M1" || b == "M2") {
-		moves = true;
-	}
-	else if (b == "DL") {
-		if (i==1 && j==1) { arg = "itself" }
-		else if (!arg) { arg = "pixels" }
-		if (deletes.indexOf(arg) == -1) { deletes = deletes.concat(arg.split(",")); }
-	}
-	else if (b == "SW") {
-		if (!arg) { arg = "pixels" }
-		if (swaps.indexOf(arg) == -1) { swaps = swaps.concat(arg.split(",")); }
-	}
-	else if (b == "CL") {
-		clones = true;
-	}
-	else if (b == "CR" || b == "CH" || b == "LB" || b == "L1" || b == "L2") {
-		if (!arg) { arg = "[???]" }
-		else if (arg.indexOf(">") !== -1) { arg = arg.split(">")[1]; }
-		if (creates.indexOf(arg) == -1) { creates = creates.concat(arg.split(",")); }
-	}
-	else if (b == "HT") {
-		heats = true;
-	}
-	else if (b == "CO") {
-		cools = true;
-	}
-	else if (b == "ST") {
-		if (!arg) { arg = "pixels" }
-		if (sticks.indexOf(arg) == -1) { sticks = sticks.concat(arg.split(",")); }
-	}
-	else if (b == "EX") {
-		explodes = true;
-	}
-
-
-}}}}
-		// make sure deletes, swaps, creates, and sticks have no duplicate items
-		deletes = deletes.filter(function(item, pos) {return deletes.indexOf(item) == pos;});
-		swaps = swaps.filter(function(item, pos) {return swaps.indexOf(item) == pos;});
-		creates = creates.filter(function(item, pos) {return creates.indexOf(item) == pos;});
-		sticks = sticks.filter(function(item, pos) {return sticks.indexOf(item) == pos;});
-		if ((info.category == "tools" || info.category == "edit" || info.tool) && !info.canPlace) { infoText.innerHTML += "\nTool."}
-		else {
-			if (!moves && info.behavior) { infoText.innerHTML += "\nStationary."; }
-			if (info.category) { infoText.innerHTML += "\nCategory: "+infoLink(info.category)+"."; }
-		if (info.noMix) { infoText.innerHTML += "\nWon't mix without Shift."; }
-		if (info.conduct) { infoText.innerHTML += "\nConducts electricity."; }
-		if (swaps.length > 0) { infoText.innerHTML += "\nMoves through "+infoLink(swaps)+"."; }
-		if (creates.length > 0) { infoText.innerHTML += "\nMakes "+infoLink(creates)+"."; }
-		if (clones) { infoText.innerHTML += "\nClones self." }
-		if (deletes.length > 0) { infoText.innerHTML += "\nDeletes "+infoLink(deletes)+"."; }
-		if (heats) { infoText.innerHTML += "\nHeats pixels." }
-		if (cools) { infoText.innerHTML += "\nCools pixels." }
-		if (sticks.length > 0) { infoText.innerHTML += "\nSticks to "+infoLink(sticks)+"."; }
-		if (explodes) { infoText.innerHTML += "\nExplodes." }
-		if (info.hardness >= 1) { infoText.innerHTML += "\nUnbreakable." }
-		if (settings["unhide"]!==1 && info.hidden) { infoText.innerHTML += "\nHidden by default."; }
-		if (info.density != undefined) { infoText.innerHTML += "\nDensity: "+formatDensity(info.density)+"."; }
-		if (info.tempHigh != undefined) {
-			infoText.innerHTML += "\nTurns into "+infoLink(info.stateHigh)+" above "+formatTemp(info.tempHigh)+".";
-		}
-		if (info.tempLow != undefined) {
-			infoText.innerHTML += "\nTurns into "+infoLink(info.stateLow)+" below "+formatTemp(info.tempLow)+".";
-		}
-		if (info.breakInto === null) {
-			infoText.innerHTML += "\nDisappears when broken.";
-		}
-		else if (info.breakInto != undefined) {
-			infoText.innerHTML += "\nBreaks into "+infoLink(info.breakInto)+".";
-		}
-		else if (info.breakIntoColor != undefined) {
-			infoText.innerHTML += "\nChanges color when broken.";
-		}
-		if (info.burn != undefined) { infoText.innerHTML += "\nFlammability: "+info.burn+"%."; }
-		if (info.burnTime != undefined) {
-			infoText.innerHTML += "\nBurns for "+info.burnTime+" tick";
-			if (info.burnTime != 1) { infoText.innerHTML += "s"; }
-			infoText.innerHTML += ".";
-		}
-		if (info.burnInto) { infoText.innerHTML += "\nBurns into "+infoLink(info.burnInto)+"."; }
-		if (info.fireColor) {
-			if (!(info.fireColor instanceof Array)) {
-				infoText.innerHTML += "\nFlame Color: <span style='background-color:"+info.fireColor+"'>	 </span>";
-			}
-			else {
-				//gradient
-				var gradient = info.fireColor;
-				var gradientString = "linear-gradient(to right";
-				for (var i = 0; i < gradient.length; i++) {
-					gradientString += ", "+gradient[i]+" "+(i*100/gradient.length)+"%";
+				for (let i = 0; i < info.behavior.length; i++) {
+					const row = info.behavior[i];
+					for (let j = 0; j < row.length; j++) {
+						// console.log(row[j]);
+						row[j].split(/ AND /g).forEach(cell => {
+							cell = cell.trim().match(/^[A-Z0-9]{2}(\:[^%>]+)?/g)[0];
+							let split = cell.split(":");
+							behaviorRules[split[0]] = behaviorRules[split[0]] || [];
+							if (split.length > 1) behaviorRules[split[0]] = behaviorRules[split[0]].concat(split[1].split(","));
+						})
+					}
 				}
-				gradientString += ")";
-				infoText.innerHTML += "\nFlame Color: <span style='background:"+gradientString+"'>	 </span>";
 			}
-		}
-		if (info.stain) {
-			if (info.stain < 0) { infoText.innerHTML += "\nCleans stains."; }
-			else { infoText.innerHTML += "\nStains solids."; }
-		}
-		if (info.customColor) { infoText.innerHTML += "\nColor is customizable."; }
-		}
+			// console.log(behaviorRules);
+			let makes = (info.infoMakes||[]).concat(behaviorRules.CR||[]).concat(behaviorRules.C2||[]).concat(behaviorRules.LB||[]).concat(behaviorRules.L2||[]);
+			// console.log(makes);
+			if (makes.length) sections.push(["makes", infoLink(makes)]);
+			if (behaviorRules.SH) sections.push(behaviorRules.SH.length ? ["shocks", infoLink(behaviorRules.SH)] : "Shocks pixels.");
+			// if (behaviorRules.DL) sections.push(behaviorRules.DL.length ? ["deletes", infoLink(behaviorRules.DL)] : "Deletes pixels.");
+			if (behaviorRules.CL || info.onClicked === behaviors.CLONE_ON_CLICK || info.tick === behaviors.CLONER || info.onShiftSelect === behaviors.CLONER_SHIFT_SELECT) sections.push("Clones pixels.");
+			if (behaviorRules.EX) tags.explosive = true;
 
-		if (info.reactions) {
-			infoText.innerHTML += "\nReacts with " + infoLink(Object.keys(info.reactions)) + ".";
-		}
-		if (info.related) {
-			infoText.innerHTML += "\n\n";
-			var related = info.related;
-			if (typeof related == "string") {related = [related];}
-			infoText.innerHTML += "See Also: "+infoLink(related)+".";
-		}
-		if (info.alias) {
-			infoText.innerHTML += "\n\n";
-			var alias = info.alias;
-			if (typeof alias == "string") {alias = [alias];}
-			infoText.innerHTML += "Also known as "+alias.join(", ").toUpperCase()+".";
-		}
-	}
-	else if (categoryList.indexOf(element) !== -1) {
-		infoTitle.innerHTML = element;
-		infoTitle.innerHTML = infoTitle.innerHTML.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
-		var matchingCategory = [];
-		for (e in elements) {
-			if (elements[e].category === element) {
-				matchingCategory.push(e);
+			if (info.onShiftSelect) sections.push("Has Shift-Select ability.");
+
+			let fireColor = info.fireColor;
+			if (fireColor && Array.isArray(fireColor)) fireColor = fireColor[0];
+			if (info.burn || info.burning) {
+				tags.flammable = true;
+				if (info.burnInto) {
+					if (Array.isArray(info.burnInto)) info.burnInto.forEach(b => states[b] = true);
+					else states[info.burnInto] = true;
+				}
+				if ((Array.isArray(info.burnInto) && info.burnInto.includes("explosion")) || info.burnInto === "explosion") {
+					sections.push(`Explodes when ignited.`);
+				}
+				else sections.push(`<span${fireColor ? ` style="color: ${fireColor}"` : ""}>Burns</span>${info.burnTime >= 300 ? " slowly" : info.burnTime <= 30 ? " quickly" : ""}${(!info.burnInto || info.burnInto === null) ? "" : " into " + infoLink(info.burnInto)}.`);
 			}
-		}
-		var html = "Category of "+matchingCategory.length+".\n<div class='infoGrid'>";
-		for (var i = 0; i < matchingCategory.length; i++) {
-			html += infoLink(matchingCategory[i]);
-		}
-		infoText.innerHTML = html + "</div>";
-	}
-	else if (element.indexOf(",") !== -1) {
-		infoTitle.innerHTML = "Lookup";
-		var split = element.split(",");
-		var html = "<div class='infoGrid'>";
-		for (var i = 0; i < split.length; i++) {
-			html += infoLink(split[i]);
-		}
-		infoText.innerHTML = html + "</div>";
-		infoSearch.value = "";
-	}
-	else if (element === "") {
-		infoTitle.innerHTML = "Browse";
-		var html = infoLink("all")+" • "+infoLink("undiscovered")+" • "+infoLink("discovered")+"\n<div class='infoGrid'>";
-		for (var i = 0; i < categoryList.length; i++) {
-			html += infoLink(categoryList[i]);
-		}
-		infoText.innerHTML = html + infoLink("hidden")+"</div>";
-	}
-	else if (element === "undiscovered") {
-		infoTitle.innerHTML = "Undiscovered";
-		var items = [];
-		for (e in elements) {
-			if (elements[e].hidden && !settings.unlocked[e]) {
-				items.push(e);
+			else if (fireColor) {
+				sections.push(`Burns <span style="color: ${fireColor}">with color</span>.`)
 			}
-		}
-		items.sort();
-		infoTitle.innerHTML += " ("+items.length+")";
-		if (items.length === 0) { infoText.innerHTML = "You discovered everything!\n\nJoin our <a href='https://discord.gg/ejUc6YPQuS'>Discord</a> to stay up to date with updates."; }
-		else {
-			var html = "<div class='infoGrid'>";
-			for (var i = 0; i < items.length; i++) { html += infoLink(items[i]); }
-			infoText.innerHTML = html + "</div>";
-		}
-	}
-	else if (element === "all") {
-		infoTitle.innerHTML = "All ("+elementCount+")";
-		var items = Object.keys(elements).sort();
-		var html = "<div class='infoGrid'>";
-		for (var i = 0; i < items.length; i++) { html += infoLink(items[i]); }
-		infoText.innerHTML = html + "</div>";
-	}
-	else if (element === "discovered") {
-		infoTitle.innerHTML = "Discovered";
-		var items = [];
-		for (e in elements) {
-			if (!elements[e].hidden || settings.unlocked[e]) {
-				items.push(e);
+
+			if (!isNaN(info.density)) {
+				sections.push(["density", formatDensity(info.density)]);
 			}
-		}
-		items.sort();
-		infoTitle.innerHTML += " ("+items.length+")";
-		var html = "<div class='infoGrid'>";
-		for (var i = 0; i < items.length; i++) { html += infoLink(items[i]); }
-		infoText.innerHTML = html + "</div>";
-	}
-	else if (element === "hidden") {
-		infoTitle.innerHTML = "Hidden ("+hiddenCount+")";
-		var items = [];
-		for (e in elements) {
-			if (elements[e].hidden) { items.push(e); }
-		}
-		items.sort();
-		if (items.length === 0) { infoText.innerHTML = "You discovered everything!\n\nJoin our <a href='https://discord.gg/ejUc6YPQuS'>Discord</a> to stay up to date with updates."; }
-		else {
-			var html = "<div class='infoGrid'>";
-			for (var i = 0; i < items.length; i++) { html += infoLink(items[i]); }
-			infoText.innerHTML = html + "</div>";
-		}
-	}
-	else if (element === "air") {
-		infoTitle.innerHTML = "Air";
-		infoText.innerHTML = "\nColor: <span>	 </span>\nCategory: "+infoLink("gases")+".\nDensity: "+formatDensity(currentSaveData.airdensity)+"."
-	}
-	else {
-		infoTitle.innerHTML = "";
-		infoText.innerHTML = "";
-		error = true;
-	}
-	}
-	else {
-		infoTitle.innerHTML = "";
-		infoText.innerHTML = "";
-	}
-	if (error) { infoSearch.style.backgroundColor = "rgb(100, 33, 33)"; }
-	else {
-		infoSearch.style.backgroundColor = "";
-		if (!back && infoHistory[infoHistory.length-1] !== element) {infoHistory.push(element);}
-	}
-	if (infoHistory.length > 1) {
-		document.getElementById("infoBackButton").style.display = "inline-block";
-	}
-	else {
-		document.getElementById("infoBackButton").style.display = "none";
-	}
-}
-		infoHistory = [];
-		function infoBack() {
-			if (infoHistory.length > 0) {
-				infoHistory.pop()
-				showInfo(infoHistory[infoHistory.length-1], true);
+			// if (!isNaN(info.heatCapacity)) { sections.push(["heat capacity", info.heatCapacity+" J"]); }
+			if (info.seed) {
+				if (info.seed === true) tags.seed = true;
+				else sections.push(["seed", infoLink(info.seed)]);
 			}
+
+			let stateDisplay = [];
+			if (info.extraTempHigh) {
+				for (let temp in info.extraTempHigh) {
+					states[info.extraTempHigh[temp]] = true;
+					stateDisplay.push(`${infoLink(info.extraTempHigh[temp])} (<span style="color:#ff3939">${formatTemp(parseInt(temp))}</span>)`);
+				}
+			}
+			if (info.stateHigh) {
+				stateDisplay.push(`${infoLink(info.stateHigh)} (<span style="color:#ff9839">${formatTemp(info.tempHigh)}</span>)`);
+			}
+			if (!isNaN(info.temp) && (stateDisplay.length || isNaN(info.stateLow))) {
+				stateDisplay.push(`<em>Spawns at <span style="color:#a6ff39">${formatTemp(info.temp)}</span></em>`);
+			}
+			if (info.stateLow) {
+				stateDisplay.push(`${infoLink(info.stateLow)} (<span style="color:#39b5ff">${formatTemp(info.tempLow)}</span>)`);
+			}
+			if (info.extraTempLow) {
+				for (let temp in info.extraTempLow) {
+					states[info.extraTempLow[temp]] = true;
+					stateDisplay.push(`${infoLink(info.extraTempLow[temp])} (<span style="color:#394eff">${formatTemp(parseInt(temp))}</span>)`);
+				}
+			}
+			delete states["null"];
+			delete states["undefined"];
+			if (states["explosion"]) tags.explosive = true;
+
+			delete tags._;
+			if (Object.keys(tags).length) sections.unshift("<span class='infoTags'>" + Object.keys(tags).map(tag => elemTitleCase(langKey("info."+tag, tag))).join(" • ") + "</span>");
+
+			if (stateDisplay.length) sections.push(["states", stateDisplay.join("<br>")])
+			else if (info.temp) sections.push(`Spawns at <span style="color:#a6ff39">${formatTemp(info.temp)}</span>.`);
+
+			if (info.extinguish) sections.push("Extinguishes burning pixels.");
+			if (info.conduct) {
+				tags.conductive = true;
+				sections.push(`Conducts${info.conduct >= 1 ? " all" : info.conduct <= 0.1 ? " some" : ""} electricity.`);
+			}
+			if (info.stain > 0) sections.push("Stains solids.");
+			else if (info.stain < 0) sections.push("Cleans stained pixels.");
+			if (info.customColor) sections.push("Color is customizable.");
+			let related = (info.related || []);
+			if (!Array.isArray(related)) related = [related];
+			related = related.concat([info.baby, info.egg, info.pickElement].filter(r => typeof r === "string" && r !== query));
+			if (related.length) sections.push(["related", infoLink([...new Set(related)])]);
+			if (info.alias) sections.push(["alias", (Array.isArray(info.alias) ? info.alias.join(", ") : info.alias).toUpperCase()]);
+
+			let reactionsDisplay = [];
+			let reactions = {};
+			if (info.reactions) for (const elem2 in info.reactions) {
+				reactions[elem2] = info.reactions[elem2];
+			}
+			for (const elem2 in elements) {
+				if (elements[elem2].reactions !== undefined &&
+					elements[elem2].reactions[query] !== undefined
+				) {
+					reactions[elem2] = elements[elem2].reactions[query];
+				}
+			}
+			for (const elem2 in reactions) {
+				const r = reactions[elem2];
+				let r1 = r.elem1;
+				let r2 = r.elem2;
+				if (!Array.isArray(r1)) r1 = [r1];
+				if (!Array.isArray(r2)) r2 = [r2];
+				let result = [...new Set(r1.concat(r2))].filter(e => e !== undefined);
+				if (result.length === 1 && result[0] === null) result = "air";
+				else result = result.filter(e => e);
+				reactionsDisplay.push(`<div> <span>${infoLink(elem2, true)}</span> <span>${result.length ? "&gt;" : ""}</span> <span>${result.length ? infoLink(result, true) : ""}</span>  </div>`)
+			}
+			if (reactionsDisplay.length) sections.push(["reactions", reactionsDisplay.join("\n")])
+
+			
+			infoTitle.innerHTML = "<span>" + (info.name || query).toUpperCase().replace(/_/g, " ") + "</span><span>(" + infoLink(info.category) + ')</span><span style="background:'+gradient+'; border: outset rgba(127, 127, 127, 0.5); opacity: '+(info.alpha??1)+'"></span>';
+			let html = "<table>";
+			sections.forEach(content => {
+				if (!Array.isArray(content)) html += `<tr><td colspan="2">${content}</td></tr>`;
+				else if (content.length === 1) html += `<tr><td colspan="2">${content[0]}</td></tr>`;
+				else {
+					content[0] = langKey("info."+content[0], content[0]);
+					html += `<tr><td>${content.join("</td> <td>")}</td></tr>`;
+				}
+			})
+			infoSubtitle.innerHTML = "Press Enter to select."
+			infoText.innerHTML = html+"</table>";
 		}
+		// infoHistory = [];
+		// function infoBack() {
+		// 	if (infoHistory.length > 0) {
+		// 		infoHistory.pop()
+		// 		showInfo(infoHistory[infoHistory.length-1], true);
+		// 	}
+		// }
 		function closeMenu(nextMenu) {
 			if (!showingMenu) { return; }
 			paused = false;
@@ -19612,7 +20470,7 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 				var infoSearch = document.getElementById("infoSearch");
 				infoParent.style.display = "none";
 				infoSearch.value = "";
-				infoHistory = [];
+				// infoHistory = [];
 			}
 			else if (showingMenu == "mods") {
 				var modParent = document.getElementById("modParent");
@@ -19642,6 +20500,50 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 				genericMenuHandler=null;
 			}
 			showingMenu = false;
+			checkMenuState();
+		}
+		function checkMenuState() {
+			if (!showingMenu) {
+				const btn = document.querySelector(`button[data-menu][on="true"]`);
+				if (btn) btn.setAttribute("on", "false");
+				return;
+			}
+
+			let menu = showingMenu;
+			if (showingMenu === "prompt" && promptState && promptState.id) menu = promptState.id;
+
+			const btn = document.querySelector(`button[data-menu="${menu}"]`);
+			if (btn) {
+				btn.setAttribute("on", "true");
+			}
+		}
+		function checkButtonIcons() {
+			let btns = document.querySelectorAll("#gameWrapper *" + (settings.icons === 0 ? ".icon" : "[data-isIcon]"));
+			btns.forEach(btn => {
+				if (settings.icons === 0) {
+					btn.classList.remove("icon");
+					btn.setAttribute("data-isIcon", "true");
+				}
+				else {
+					btn.classList.add("icon");
+					btn.removeAttribute("data-isIcon");
+				}
+			})
+		}
+		function checkUndoRedo() {
+			let canUndo = historyIndex === null || historyIndex > historyTimeline.min;
+			let canRedo = historyIndex !== null;
+
+			if (historyTimeline.max === 0) {
+				canUndo = false;
+				canRedo = false;
+			}
+			
+			if (canUndo) undoButton.classList.remove("disabled");
+			else undoButton.classList.add("disabled");
+			
+			if (canRedo) redoButton.classList.remove("disabled");
+			else redoButton.classList.add("disabled");
 		}
 		function showModManager() {
 			var modParent = document.getElementById("modParent");
@@ -19649,6 +20551,7 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 			modParent.style.display = "block";
 			modManagerUrl.focus();
 			showingMenu = "mods";
+			checkMenuState();
 			paused = true;
 			checkPause();
 		}
@@ -19828,6 +20731,7 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 			displaySavesList("saveSlotList", saveItems, true);
 			savesParent.style.display = "block";
 			showingMenu = "saves";
+			checkMenuState();
 			paused = true;
 			checkPause();
 		}
@@ -20205,16 +21109,15 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 		function showSavePrompt() {
 			closeMenu();
 			if (!savingState) return;
+			paused = true;
+			checkPause();
+			showingMenu = "info";
+			checkMenuState();
 			var savePromptParent = document.getElementById("savePromptParent");
 			var saveWarning = document.getElementById("saveWarning");
-			if (currentSaveData.loaded) {
-				document.getElementById("saveName").value = currentSaveData.name || "";
-				document.getElementById("saveAuthor").value = currentSaveData.author || "";
-				document.getElementById("saveDesc").value = currentSaveData.desc || "";
-			}
-			else if (settings.authorName) {
-				document.getElementById("saveAuthor").value = settings.authorName;
-			}
+			document.getElementById("saveName").value = currentSaveData.name || "";
+			document.getElementById("saveAuthor").value = currentSaveData.author || settings.authorName || "";
+			document.getElementById("saveDesc").value = currentSaveData.desc || "";
 			saveWarning.innerHTML = ""
 			var menuTitle = document.querySelector("#savePromptMenu .menuTitle");
 			if (savingState.slot === null) {
@@ -20232,6 +21135,7 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 				saveWarning.innerHTML += "<br>"+langKey("gui.modWarning","Mods might not be necessary to include, and may annoy the user!");
 			}
 			else { saveMods.style.display = "none"; }
+			saveWarning.innerHTML = saveWarning.innerHTML.replace(/^<br>/g, "");
 			var saveTagsSpan = document.getElementById("saveTagsSpan");
 			if (saveTagsSpan.style.display !== "none") {
 				var saveTagsList = document.getElementById("saveTags");
@@ -20252,6 +21156,7 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 			}
 			savePromptParent.style.display = "block";
 			showingMenu = "savePrompt";
+			checkMenuState();
 			document.getElementById("saveName").focus();
 		}
 		function showPromptScreen() {
@@ -20315,26 +21220,21 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 			}
 			if (promptState.full) promptParent.classList.add("full");
 			else promptParent.classList.remove("full");
-			if (promptState.tall) promptParent.classList.add("menuParentTall");
-			else promptParent.classList.remove("menuParentTall");
 			promptParent.style.display = "block";
+			if (promptState.tall || promptParent.clientHeight >= 300) promptParent.classList.add("menuParentTall");
+			else promptParent.classList.remove("menuParentTall");
 			showingMenu = "prompt";
+			checkMenuState();
 			if (promptState.type === "input") {
 				document.getElementById("promptInput").focus();
 				document.getElementById("promptInput").select();
 			}
 		}
-		function showGameInfo() {
-			var settingsParent = document.getElementById("gameInfoParent");
-			settingsParent.style.display = "block";
-			showingMenu = "gameInfo";
-			paused = true;
-			checkPause();
-		}
 		function showSettings() {
 			var settingsParent = document.getElementById("settingsParent");
 			settingsParent.style.display = "block";
 			showingMenu = "settings";
+			checkMenuState();
 			paused = true;
 			checkPause();
 			let firstInput = settingsParent.querySelector(".menuText input, .menuText button, .menuText select");
@@ -20435,6 +21335,7 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 			if (changed) { lastMouseSize = mouseSize }
 			else if (lastMouseSize) { mouseSize = lastMouseSize }
 			if (mouseSize < 1) { mouseSize = 1; }
+			else if (diff) lastMouseChange = Date.now();
 			if (mouseSize % 2 === 0 && mouseSize !== 2 && mouseSize !== 4) {
 				if (changed === 1) mouseSize++;
 				else if (changed === -1) mouseSize--;
@@ -20571,7 +21472,6 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 				showPromptScreen();
 			}
 		}
-		// if (promptState && (new Date() - promptState.start) < 100) return false;
 
 		shiftDown = 0;
 		shaping = 0;
@@ -20582,6 +21482,10 @@ for (var k = 0; k < b0.split(" AND ").length; k++) {
 		tempTool = null;
 		editingPixels = [];
 		lookupTempElements = {};
+		currentCursorType = null;
+		currentClipboard = [];
+		placingStamp = null;
+		showGrid = 0;
 		hiding = false;
 		tps = settings.tps || 30;
 		let lastTickTime = 0;
@@ -20821,24 +21725,24 @@ function finalizeColor(obj) {
 	}
 }
 function finalizeElementAfter(key) {
-	elements[key].id = nextElemID;
+	const info = elements[key];
+	info.id = nextElemID;
 	nextElemID++;
 
 	// Language Loader Part 2
 	if (lang[key] !== undefined) {
-		elements[key].name = lang[key]
+		info.name = lang[key]
 	}
 
 	// If the element has no behavior, set it to behaviors.WALL
-	if (!elements[key].behavior && !elements[key].tick) {
-		elements[key].tick = function(pixel) {};
-	}
+	if (info.tick === undefined && info.behavior === undefined && info.tool === undefined) info.behavior = behaviors.WALL;
+	else if (info.behavior !== undefined && info.movable === undefined && info.behavior == behaviors.WALL) info.movable = false;
 	// If the behavior is a function, delete it and set tick to it instead
-	if (typeof elements[key].behavior === "function") {
-		if (elements[key].tick) {
-			elements[key].tick1 = elements[key].tick;
-			elements[key].tick2 = elements[key].behavior;
-			elements[key].tick = function(pixel) {
+	if (typeof info.behavior === "function") {
+		if (info.tick) {
+			info.tick1 = info.tick;
+			info.tick2 = info.behavior;
+			info.tick = function(pixel) {
 				if (pixel.start === pixelTicks) {return}
 				var id = elements[pixel.element].id;
 				elements[pixel.element].tick1(pixel);
@@ -20848,57 +21752,57 @@ function finalizeElementAfter(key) {
 			}
 		}
 		else {
-			elements[key].tick = elements[key].behavior;
+			info.tick = info.behavior;
 		}
-		delete elements[key].behavior;
+		delete info.behavior;
 	}
 	// If the element has no color, set it to white
-	if (elements[key].color === undefined) {
-		elements[key].color = "rgb(255,255,255)";
-		elements[key].colorObject = {r:255,g:255,b:255};
+	if (info.color === undefined) {
+		info.color = "rgb(255,255,255)";
+		info.colorObject = {r:255,g:255,b:255};
 	}
-	if (elements[key].movable === false) { delete elements[key].movable }
-	else if (elements[key].movable === undefined) {
+	if (info.movable === false) { delete info.movable }
+	else if (info.movable === undefined) {
 		// If the element's behavior is an array and contains M1 or M2, set its movable to true
-		if (elements[key].behavior && typeof elements[key].behavior[0] === "object") {
-			var bstring = JSON.stringify(elements[key].behavior);
-			if (bstring.indexOf("M1")!==-1 || bstring.indexOf("M2")!==-1) { elements[key].movable = true; }
+		if (info.behavior && typeof info.behavior[0] === "object") {
+			var bstring = JSON.stringify(info.behavior);
+			if (bstring.indexOf("M1")!==-1 || bstring.indexOf("M2")!==-1) { info.movable = true; }
 		}
-		if (elements[key].tick) { elements[key].movable = true; }
+		if (info.tick) { info.movable = true; }
 	}
-	if (elements[key].behavior) {
-		var behavior = elements[key].behavior;
+	if (info.behavior) {
+		var behavior = info.behavior;
 		var behaviorCenterY = behavior[Math.floor(behavior.length/2)]
 		var behaviorCenter = behaviorCenterY[Math.floor(behaviorCenterY.length/2)]
 		// If the element's behavior[1][1] includes "FX", set it's flippableX to true
 		if (behaviorCenter.indexOf("FX") !== -1) {
-			elements[key].flippableX = true;
+			info.flippableX = true;
 		}
 		// If the element's behavior[1][1] includes "FY", set it's flippableY to true
 		if (behaviorCenter.indexOf("FY") !== -1) {
-			elements[key].flippableY = true;
+			info.flippableY = true;
 		}
 		// If the element's behavior[1][1] includes "RT", set it's rotatable to "true"
 		if (behaviorCenter.indexOf("RT") !== -1) {
-			elements[key].rotatable = true;
+			info.rotatable = true;
 		}
 
 		// If the element's behavior stringified includes "BO", loop through the behavior
-		if (elements[key].behavior.toString().indexOf("BO") !== -1 && !elements[key].rotatable) {
-			for (var i = 0; i < elements[key].behavior.length; i++) {
+		if (info.behavior.toString().indexOf("BO") !== -1 && !info.rotatable) {
+			for (var i = 0; i < info.behavior.length; i++) {
 				// Loop through each array in the behavior
-				for (var j = 0; j < elements[key].behavior[i].length; j++) {
+				for (var j = 0; j < info.behavior[i].length; j++) {
 					// If the behavior includes "BO", set the behaviorOn to the behavior
-					if (elements[key].behavior[i][j].indexOf("BO") !== -1) {
+					if (info.behavior[i][j].indexOf("BO") !== -1) {
 						if ((i==0 && j==0) || (i==0 && j==2) || (i==2 && j==0) && (i==2 && j==2)) {
-							elements[key].flippableX = true;
-							elements[key].flippableY = true;
+							info.flippableX = true;
+							info.flippableY = true;
 						}
 						else if (i==0 || i==2) {
-							elements[key].flippableY = true;
+							info.flippableY = true;
 						}
 						else if (j==0 || j==2) {
-							elements[key].flippableX = true;
+							info.flippableX = true;
 						}
 					}
 				}
@@ -20907,57 +21811,57 @@ function finalizeElementAfter(key) {
 
 	}
 
-	if (elements[key].state === undefined && elements[key].density !== undefined) elements[key].state = "solid";
+	if (info.state === undefined && info.density !== undefined) info.state = "solid";
 
 	// If the element's state is "gas", isGas = true
-	if (elements[key].state === "gas") {
-		elements[key].isGas = true;
-		if (elements[key].grain === undefined) elements[key].grain = 0.1;
+	if (info.state === "gas") {
+		info.isGas = true;
+		if (info.grain === undefined) info.grain = 0.1;
 	}
-	else if (elements[key].state !== "liquid") {
+	else if (info.state !== "liquid") {
 		// Else if the state is not "solid" or "liquid", delete it
-		if (elements[key].state !== "solid" && elements[key].state !== undefined) {
-			delete elements[key].state;
+		if (info.state !== "solid" && info.state !== undefined) {
+			delete info.state;
 		}
 		// add heat glow to solid if applicable
-		else if (elements[key].tempHigh > 400 && elements[key].renderer === undefined && elements[elements[key].stateHigh] && elements[elements[key].stateHigh].state === "liquid") {
-			elements[key].renderer = renderPresets.HEATGLOW;
+		else if (info.tempHigh > 400 && info.renderer === undefined && elements[info.stateHigh] && elements[info.stateHigh].state === "liquid") {
+			info.renderer = renderPresets.HEATGLOW;
 		}
 	}
 	else {
 		// add molten renderer to hot molten liquids
-		if (elements[key].stateLow && elements[key].temp > 500 && elements[key].renderer === undefined) {
-			elements[key].renderer = renderPresets.MOLTEN;
+		if (info.stateLow && info.temp > 500 && info.renderer === undefined) {
+			info.renderer = renderPresets.MOLTEN;
 		}
-		if (elements[key].grain === undefined) elements[key].grain = 0.5;
+		if (info.grain === undefined) info.grain = 0.5;
 	}
 
-	if (elements[key].colorPattern) {
-		if (!elements[key].colorKey) {
-			delete elements[key].colorPattern;
+	if (info.colorPattern) {
+		if (!info.colorKey) {
+			delete info.colorPattern;
 		}
 		else {
 		var newPattern = [];
-		for (var i = 0; i < elements[key].colorPattern.length; i++) {
+		for (var i = 0; i < info.colorPattern.length; i++) {
 			newPattern.push([]);
-			var line = elements[key].colorPattern[i];
+			var line = info.colorPattern[i];
 			// loop through each character in the line
 			for (var j = 0; j < line.length; j++) {
 				var char = line[j];
-				if (elements[key].colorKey[char]) {
-					// if (elements[key].colorKey[char].startsWith("#")) {
-					//	 var rgb = hexToRGB(elements[key].colorKey[char]);
-					//	 elements[key].colorKey[char] = "rgb("+rgb.r+","+rgb.g+","+rgb.b+")";
+				if (info.colorKey[char]) {
+					// if (info.colorKey[char].startsWith("#")) {
+					//	 var rgb = hexToRGB(info.colorKey[char]);
+					//	 info.colorKey[char] = "rgb("+rgb.r+","+rgb.g+","+rgb.b+")";
 					// }
-					newPattern[i].push(elements[key].colorKey[char]);
+					newPattern[i].push(info.colorKey[char]);
 				}
 				else {
 					newPattern[i].push("#ffffff");
 				}
 			}
 		}
-		elements[key].colorPattern = newPattern;
-		delete elements[key].colorKey;
+		info.colorPattern = newPattern;
+		delete info.colorKey;
 		}
 	}
 }
@@ -21005,6 +21909,7 @@ function addElement(key,obj) {
 gameCanvas = null;
 canvas = null;
 ctx = null;
+historyTimeline = {min:0, max:0};
 window.addEventListener("load", function() {
 	clearTimeout(failLoadTimeout);
 	paused = false;
@@ -21144,6 +22049,29 @@ window.addEventListener("load", function() {
 	if (window.innerWidth > 1000 && newHeight > 500) { newHeight = 500; }
 	if (!settings.bgimg) canvas.style.backgroundColor = settings.bg||"#000000";
 
+	startingWindowWidth = window.innerWidth;
+	startingWindowHeight = window.innerHeight;
+	checkWindowSize = function() {
+		let gameDiv = document.getElementById("gameDiv");
+		if (gameCanvas.clientWidth / window.innerWidth > 0.8) {
+			gameDiv.classList.add("gameDiv-wide");
+		}
+		else {
+			gameDiv.classList.remove("gameDiv-wide");
+		}
+		if (Math.abs(startingWindowWidth - window.innerWidth) >= 300) {
+			startingWindowWidth = window.innerWidth;
+			startingWindowHeight = window.innerHeight;
+			if (currentPixels.length === 0) {
+				clearAll();
+			}
+			else if (!settings.resizeNotice) {
+				promptText("Reset the canvas by pressing 'R' or the 'Reset' button.",()=>{ saveSettings(); },"Window Resized")
+				settings.resizeNotice = true;
+			}
+		}
+	}
+
 	autoResizeCanvas = function(clear, ratio) {
 		pixelSize = parseInt(settings.pixelsize) || 6;
 		if (window.innerWidth < 700) {
@@ -21206,6 +22134,9 @@ window.addEventListener("load", function() {
 		height = Math.round(newHeight/newPixelSize)-1;
 		width = Math.round(newWidth/newPixelSize)-1;
 		mousePos = {x:Math.round(width/2),y:Math.round(height/2)};
+		historyTimeline = {min:0, max:0};
+		historyIndex = null;
+		checkUndoRedo();
 		if (clear!==false) { clearAll(); }
 		var canvasLayerKeys = Object.keys(canvasLayers);
 		for (let i = 0; i < canvasLayerKeys.length; i++) {
@@ -21217,6 +22148,8 @@ window.addEventListener("load", function() {
 			layerCtx.mozImageSmoothingEnabled = false;
 			layerCtx.imageSmoothingEnabled = false;
 		}
+
+		checkWindowSize();
 	}
 	autoResizeCanvas(false);
 
@@ -21250,34 +22183,33 @@ window.addEventListener("load", function() {
 		if (info.canPlace ) return true;
 		return info.category !== "tools" && info.category !== "edit" && !info.tool;
 	});
-	gameCanvas.addEventListener("mousedown", function(e){
-		tempTool = null;
-		if (!showingMenu && elements[currentElement] && elements[currentElement].onMouseDown && e.button == 0) {
-			elements[currentElement].onMouseDown(e);
-		}
-	});
+	// gameCanvas.addEventListener("mousedown", function(e){
+	// 	if (!showingMenu && elements[currentElement] && elements[currentElement].onMouseDown && e.button == 0 && !outOfBounds(mousePos.x, mousePos.y)) {
+	// 		elements[currentElement].onMouseDown(e);
+	// 	}
+	// });
 	gameCanvas.addEventListener("mousedown", mouseClick);
-	gameCanvas.addEventListener("touchstart", function(e) {
-		tempTool = null;
-		mousePos = getMousePos(canvas, e);
-		if (e.touches) e = e.touches[0];
-		if (!showingMenu && elements[currentElement] && elements[currentElement].onMouseDown) {
-			elements[currentElement].onMouseDown(e);
-		}
-		return false;
-	});
+	// gameCanvas.addEventListener("touchstart", function(e) {
+	// 	mousePos = getMousePos(canvas, e);
+	// 	if (e.touches) e = e.touches[0];
+	// 	if (!showingMenu && elements[currentElement] && elements[currentElement].onMouseDown) {
+	// 		elements[currentElement].onMouseDown(e);
+	// 	}
+	// 	return false;
+	// });
 	gameCanvas.addEventListener("touchstart", mouseClick, { passive: false });
 	window.addEventListener("mouseup", mouseUp);
 	window.addEventListener("touchend", mouseUp, { passive: false });
-	gameCanvas.addEventListener("touchend", function(e) {
-		// mousePos = getMousePos(canvas, e);
-		if (e.touches) e = e.touches[0];
-		if (!showingMenu && elements[currentElement] && elements[currentElement].onMouseUp) {
-			elements[currentElement].onMouseUp(e);
-		}
-		tempTool = null;
-		return false;
-	});
+	// gameCanvas.addEventListener("touchend", function(e) {
+	// 	// mousePos = getMousePos(canvas, e);
+	// 	if (e.touches) e = e.touches[0];
+	// 	if (!showingMenu && elements[currentElement] && elements[currentElement].onMouseUp) {
+	// 		elements[currentElement].onMouseUp(e);
+	// 	}
+	// 	tempTool = null;
+	// 	strokePixels = 0;
+	// 	return false;
+	// });
 	window.addEventListener("mousemove", mouseMove);
 	gameCanvas.addEventListener("touchmove", mouseMove, { passive: false });
 	gameCanvas.addEventListener("wheel", wheelHandle);
@@ -21286,11 +22218,26 @@ window.addEventListener("load", function() {
 	gameCanvas.addEventListener("drop", function(e){
 		e.stopPropagation();
 		e.preventDefault();
-		var url = e.dataTransfer.getData('text/plain');
-		if (url) {
+		var content = e.dataTransfer.getData('text/plain');
+		try {
+			content = JSON.parse(content);
+			if (content && content.saveConfig) {
+				let fn = function() {
+					loadSave(content);
+				}
+				if (currentPixels.length === 0 || settings.resetwarning === 0 || (content.meta && content.meta.stamp)) fn();
+				else {
+					promptConfirm("Clear this scene and load save file?", (r) => { if (r) fn(); }, "Clear Canvas" );
+				}
+			}
+			return;
+		}
+		catch {}
+
+		if (content) {
 			var img = new Image();
 			img.onload = function(){placingImage = img; placeImage(); placingImage = null;}
-			img.src = url;
+			img.src = content;
 		} else {
 			if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) { return; }
 			var file = e.dataTransfer.files[0];
@@ -21338,8 +22285,26 @@ window.addEventListener("load", function() {
 				items = e.clipboardData.files;
 			}
 			if (!items) { return; }
-			var item = items[items.length-1];
-			if (item.type.indexOf('image/') !== -1) {
+			var item = items[0];
+			if (item.kind === "string" || item.type.indexOf('text/') !== -1) {
+				item.getAsString((content) => {
+					try {
+						content = JSON.parse(content);
+						if (content && content.saveConfig) {
+							let fn = function() {
+								loadSave(content);
+							}
+							if (currentPixels.length === 0 || settings.resetwarning === 0 || (content.meta && content.meta.stamp)) fn();
+							else {
+								promptConfirm("Clear this scene and load save file?", (r) => { if (r) fn(); }, "Clear Canvas" );
+							}
+						}
+						return;
+					}
+					catch {}
+				})
+			}
+			else if (item.type.indexOf('image/') !== -1) {
 				var blob = item.getAsFile();
 				var URLObj = window.URL || window.webkitURL;
 				var source = URLObj.createObjectURL(blob);
@@ -21388,23 +22353,40 @@ window.addEventListener("load", function() {
 			}
 		}
 		if (e.ctrlKey || e.metaKey) {
-			if (e.keyCode == 83) { // Ctrl+S = Save
-				e.preventDefault();
-				saveToFile();
-				if (e.shiftKey) confirmSave();
+			if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") {
+				return; //retain typing shortcuts
 			}
-			else if (e.keyCode == 79) { // Ctrl+O = Load Save
-				e.preventDefault();
-				if (e.shiftKey) {
-					if (lastSaveJSON !== null) loadSave(JSON.parse(lastSaveJSON));
-				}
-				else loadFromFile();
+
+			const oldShiftDown = shiftDown;
+			if (e.shiftKey) shiftDown = 1;
+
+			if (keybinds["^"+e.key]) {
+				if (keybinds["^"+e.key](e) !== false) e.preventDefault();
 			}
-			return
+			if (keybinds["^"+keyName]) {
+				if (keybinds["^"+keyName](e) !== false) e.preventDefault();
+			}
+			if (keybinds["^"+e.key.toUpperCase()]) {
+				if (keybinds["^"+e.key.toUpperCase()](e) !== false) e.preventDefault();
+			}
+			if (keybinds["^"+e.key.toLowerCase()]) {
+				if (keybinds["^"+e.key.toLowerCase()](e) !== false) e.preventDefault();
+			}
+			if (keybinds["^"+keyName.toLowerCase()]) {
+				if (keybinds["^"+keyName.toLowerCase()](e) !== false) e.preventDefault();
+			}
+
+			shiftDown = oldShiftDown;
+			return;
 		}
 		// else if tab, set document.body.class to "usingTab"
 		else if (e.keyCode == 9) {
 			document.body.classList.add("usingTab");
+		}
+		if (e.altKey && e.shiftKey && keyName === "KeyR") {
+			localStorage.setItem("SandboxelsTempSave", JSON.stringify(generateSave(undefined, {keep:["temp","color"]})));
+			location.reload();
+			return;
 		}
 		// F1 = hide #underDiv, #infoParent, #modParent, #pagetitle, #colorSelector if they aren't hidden, otherwise show them
 		if (e.keyCode == 112) {
@@ -21431,11 +22413,33 @@ window.addEventListener("load", function() {
 				e.preventDefault();
 				closeMenu();
 			}
-			// enter to clear infoSearch
+			// enter to select element when searching
 			else if (e.keyCode == 13 && showingMenu == "info") {
 				var infoSearch = document.getElementById("infoSearch");
-				infoSearch.value = "";
-				showInfo();
+				let e = infoMatch || infoSearch.value.toLowerCase();
+				closeMenu();
+
+				if (!e) { return; }
+				// replace spaces with underscores
+				e = e.replace(/ /g, "_");
+				es = infoMatch || mostSimilarElement(e);
+				if (es !== null) {
+					selectElement(es);
+					selectCategory(elements[es].category);
+					if (shiftDown && elements[currentElement].onShiftSelect) {
+						elements[currentElement].onShiftSelect(currentElement);
+						if (promptState) promptState.after = function() {
+							if (currentElementProp) {
+								let btn = document.getElementById("elementButton-"+currentElement);
+								if (btn) btn.setAttribute("modified", "true");
+							}
+						}
+					}
+				}
+				else {
+					logMessage("Element \"" + e + "\" not found");
+				}
+				if (!showingMenu) focusGame();
 			}
 			// enter to confirm prompt
 			else if (e.keyCode == 13 && showingMenu == "prompt" && promptState && promptState.type !== "input" && (e.target.tagName !== "INPUT")) {
@@ -21451,12 +22455,19 @@ window.addEventListener("load", function() {
 		else {
 			if (e.keyCode == 27) { // escape
 				e.preventDefault();
+				if (placingStamp) {
+					placingStamp = null;
+					if (currentElement === "paste") selectPrevElement();
+				}
 				if (shaping) {
 					mouseIsDown = false;
 					shaping = 0;
 					shapeStart = null;
+
+					if (currentElement === "select") currentElementProp = null;
 				}
-				if (editingPixels && editingPixels.length) {
+				else if (currentElement === "select") selectElement("unknown");
+				else if (editingPixels && editingPixels.length) {
 					mouseIsDown = false;
 					editingPixels = [];
 				}
@@ -21485,6 +22496,14 @@ window.addEventListener("load", function() {
 			if (keybinds[keyName](e) !== false) e.preventDefault();
 			return;
 		}
+		if (keybinds[e.key.toUpperCase()]) {
+			if (keybinds[e.key.toUpperCase()](e) !== false) e.preventDefault();
+			return;
+		}
+		if (keybinds[e.key.toLowerCase()]) {
+			if (keybinds[e.key.toLowerCase()](e) !== false) e.preventDefault();
+			return;
+		}
 		if (keybinds[keyName.toLowerCase()]) {
 			if (keybinds[keyName.toLowerCase()](e) !== false) e.preventDefault();
 			return;
@@ -21507,34 +22526,16 @@ window.addEventListener("load", function() {
 	});
 	// when window blur, shiftDown = 0
 	window.addEventListener("blur", function(e) {
+		mouseIsDown = false;
 		if (shiftDown) { toggleShift() }
 		if (shaping) {
 			shaping = 0;
 			shapeStart = null;
 		}
 	});
-	startingWindowWidth = window.innerWidth;
-	startingWindowHeight = window.innerHeight;
 	// notice when window is resized
-	window.addEventListener("resize", function(e) {
-		let gameDiv = document.getElementById("gameDiv");
-		if (gameCanvas.clientWidth / window.innerWidth > 0.8) {
-			gameDiv.classList.add("gameDiv-wide");
-		}
-		else {
-			gameDiv.classList.remove("gameDiv-wide");
-		}
-		if (Math.abs(startingWindowWidth - window.innerWidth) >= 300) {
-			startingWindowWidth = window.innerWidth;
-			startingWindowHeight = window.innerHeight;
-			if (currentPixels.length === 0) {
-				clearAll();
-			}
-			else if (!settings.resizeNotice) {
-				promptText("Reset the canvas by pressing 'R' or the 'Reset' button.",()=>{ saveSettings(); },"Window Resized")
-				settings.resizeNotice = true;
-			}
-		}
+	window.addEventListener("resize", function() {
+		checkWindowSize();
 	});
 
 	// Create buttons for elements
@@ -21595,7 +22596,8 @@ window.addEventListener("load", function() {
 		localStorage.removeItem("SandboxelsTempSave");
 		let json = JSON.parse(tempSave);
 		lastSaveJSON = json;
-		loadSave(json,3,3)
+		loadSave(json,3,3);
+		hasEditedCanvas = true;
 	}
 	else if (urlParams.has("discord")) {
 		let saveID = parseInt(urlParams.get("discord"));
@@ -21609,9 +22611,14 @@ window.addEventListener("load", function() {
 		localStorage.removeItem("SandboxelsTempMods")
 	}
 
+	if (settings.icons !== undefined) checkButtonIcons();
+	checkWindowSize();
+	window.undoButton = document.getElementById("undoButton");
+	window.redoButton = document.getElementById("redoButton");
+
 });
 	</script>
-	<link rel="stylesheet" type="text/css" href="style.css">
+	<link rel="stylesheet" type="text/css" href="style.css?nocache=1">
 </head>
 
 <body>
@@ -21653,7 +22660,21 @@ window.addEventListener("load", function() {
 			<div id="stats"></div>
 			<div id="controls">
 				<div id="toolControls" class="controlsScrollbar">
-					<button id="shiftButton" title="Toggle Shift key" class="controlButton" onclick='toggleShift();focusGame();' on="false" style="display:none">↑</button><button id="pauseButton" title="Pause/play the simulation" class="controlButton" onclick='paused=!paused;manualPaused=paused;checkPause();focusGame();' on="false">Pause</button><button id="frameButton" title="Pause and play one frame" class="controlButton" onclick='doFrame();focusGame();' on="false">&gt;</button><button id="sizeDownButton" title="Decrease the brush size" class="controlButton" onclick="mouseSize -= shiftDown?mouseSize-1:1;checkMouseSize(-1);centerMouse();focusGame();">-</button><button id="sizeUpButton" title="Increase the brush size" class="controlButton" onclick="mouseSize += shiftDown?14:1;checkMouseSize(1);centerMouse();focusGame();">+</button><button id="resetButton" title="Clear the entire scene" class="controlButton" onclick="resetPrompt();">Reset</button><button id="replaceButton" title="Override existing pixels when placing" class="controlButton" onclick='focusGame(); toggleReplaceMode();' on="false">Replace</button><button id="elemSelectButton" title="Select an element by name" class="controlButton" onclick='chooseElementPrompt();'>Elem</button><button id="editModeButton" title="Switch to Edit Mode" class="controlButton" onclick='toggleEditMode();'>Edit</button><button id="infoButton" title="Brings up the element info screen" class="controlButton" onclick='if (showingMenu!="info"){closeMenu();showInfo("")}else{closeMenu()};' on="false">Info</button><button id="savesButton" title="Brings up the Save & Load menu" class="controlButton" onclick='if (showingMenu!="saves"){closeMenu();showSaves()}else{closeMenu()};' on="false">Saves</button><button id="modsButton" title="Brings up the Mod Manager" class="controlButton" onclick='if (showingMenu!="mods"){closeMenu();showModManager()}else{closeMenu()};' on="false">Mods</button><button id="settingsButton" title="Brings up the settings screen" class="controlButton" onclick='if (showingMenu!="settings"){closeMenu();showSettings()}else{closeMenu()};' on="false">Settings</button>
+					<button id="shiftButton" class="controlButton icon" title="[Shift]&#013Toggle Shift key" onclick='toggleShift();focusGame();' on="false" style="display:none"><span>↑</span></button>
+					<button id="pauseButton" class="controlButton icon" title="[Pause]&#013Pause/play the simulation" onclick='paused=!paused;manualPaused=paused;checkPause();focusGame();' on="false"><span>Pause</span></button>
+					<button id="frameButton" class="controlButton icon" title="[Frame]&#013Pause and play one frame" onclick='doFrame();focusGame();' on="false"><span>&gt;</span></button>
+					<button id="sizeDownButton" class="controlButton icon" title="[Minus]&#013Decrease the brush size" onclick="mouseSize -= shiftDown?mouseSize-1:1;checkMouseSize(-1);centerMouse();focusGame();"><span>-</span></button>
+					<button id="sizeUpButton" class="controlButton icon" title="[Plus]&#013Increase the brush size" onclick="mouseSize += shiftDown?14:1;checkMouseSize(1);centerMouse();focusGame();"><span>+</span></button>
+					<button id="undoButton" class="controlButton icon" title="[Undo]&#013Restore the previous canvas state" onclick="if (!this.classList.contains('disabled')) {historyUndo();focusGame();}"><span>Un</span></button>
+					<button id="redoButton" class="controlButton icon" title="[Redo]&#013Restore the undone canvas state" onclick="if (!this.classList.contains('disabled')) {historyRedo();focusGame();}"><span>Re</span></button>
+					<button id="resetButton" class="controlButton icon" data-menu="reset" title="[Reset]&#013Clear the entire scene" onclick="resetPrompt();"><span>Reset</span></button>
+					<button id="replaceButton" class="controlButton icon" title="[Replace]&#013Override existing pixels when placing" onclick='focusGame(); toggleReplaceMode();' on="false"><span>Replace</span></button>
+					<!-- <button id="elemSelectButton" class="controlButton icon" title="[Elem]&#013Select an element by name" onclick='chooseElementPrompt();'><span>Elem</span></button> -->
+					<button id="editModeButton" class="controlButton icon" title="[Edit]&#013Switch to Edit Mode" onclick='toggleEditMode();'><span>Edit</span></button>
+					<button id="infoButton" class="controlButton icon" data-menu="info" title="[Search]&#013Show element info or select by name" onclick='if (showingMenu!="info"){closeMenu();showInfo("")}else{closeMenu()};' on="false"><span>Search</span></button>
+					<button id="savesButton" class="controlButton icon" data-menu="saves" title="[Saves]&#013Brings up the Save & Load menu" onclick='if (showingMenu!="saves"){closeMenu();showSaves()}else{closeMenu()};' on="false"><span>Saves</span></button>
+					<button id="modsButton" class="controlButton icon" data-menu="mods" title="[Mods]&#013Brings up the Mod Manager" onclick='if (showingMenu!="mods"){closeMenu();showModManager()}else{closeMenu()};' on="false"><span>Mods</span></button>
+					<button id="settingsButton" class="controlButton icon" data-menu="settings" title="[Settings]&#013Brings up the settings screen" onclick='if (showingMenu!="settings"){closeMenu();showSettings()}else{closeMenu()};' on="false"><span>Settings</span></button>
 				</div>
 				<script>
 					// if it is the 1st of April, add a rainbow-colored button
@@ -21669,7 +22690,7 @@ window.addEventListener("load", function() {
 						document.getElementById("pauseButton").insertAdjacentHTML("beforebegin", foolsButton);
 					}
 					if (isMobile) {
-						document.getElementById("shiftButton").style.display = "inline-block";
+						document.getElementById("shiftButton").style.display = "flex";
 					}
 				</script>
 				<div id="category-tools" class="controlsScrollbar" category="tools" style="display: flex;"></div>
@@ -21680,10 +22701,12 @@ window.addEventListener("load", function() {
 
 		</div>
 		<div id="infoParent" class="menuParent">
-			<input type="text" id="infoSearch" class="menuInput" placeholder="Element..." oninput="showInfo(this.value);" enterkeyhint="done"></input>
+			<input type="text" id="infoSearch" class="menuInput" placeholder="Element..." oninput="showInfo(this.value, false, false);" enterkeyhint="done"></input>
 			<div id="infoScreen" class="menuScreen"> <!--Element Info Page-->
 				<button class="XButton" onclick="closeMenu();"></button>
-				<span class='infoLink noselect' id="infoBackButton" onclick='infoBack()' style='text-decoration:none!important;display:none'>←&nbsp;</span><div class="menuTitle" id="infoTitle">Title</div>
+				<!-- <span class='infoLink noselect' id="infoBackButton" onclick='infoBack()' style='text-decoration:none!important;display:none'>←&nbsp;</span> -->
+				<div class="menuTitle" id="infoTitle">Title</div>
+				<div class="menuTitle" id="infoSubtitle">Subtitle</div>
 				<div class="menuText" id="infoText">Text</div>
 			</div>
 		</div>
@@ -21693,29 +22716,31 @@ window.addEventListener("load", function() {
 			<div id="modManager" class="menuScreen">
 				<button class="XButton " onclick="closeMenu();"></button>
 				<div class="menuTitle">Enabled Mods</div>
-				<ul  id="modManagerList"></ul>
-				<span id="noMods" style="display:none">You have no mods enabled.<br><br></span>
-				<script>
-					// If enabledMods has items, add an li to modManagerList for each item with the href to the item, target blank, and the item's name, with "<span class="removeModX" onclick='removeMod('>X</span>" after the link
-					if (enabledMods.length > 0) {
-						modManagerList = document.getElementById("modManagerList");
-						for (var i = 0; i < enabledMods.length; i++) {
-							var mod = enabledMods[i];
-							// modName is the last part of the mod's path
-							var modName = mod.split("/").pop();
-							let url = mod;
-							if (url.startsWith("mods/") && !isLocalFile) {
-								url = "https://mods.r74n.com/" + url;
+				<div class="menuText">
+					<ul  id="modManagerList"></ul>
+					<span id="noMods" style="display:none">You have no mods enabled.</span>
+					<script>
+						// If enabledMods has items, add an li to modManagerList for each item with the href to the item, target blank, and the item's name, with "<span class="removeModX" onclick='removeMod('>X</span>" after the link
+						if (enabledMods.length > 0) {
+							modManagerList = document.getElementById("modManagerList");
+							for (var i = 0; i < enabledMods.length; i++) {
+								var mod = enabledMods[i];
+								// modName is the last part of the mod's path
+								var modName = mod.split("/").pop();
+								let url = mod;
+								if (url.startsWith("mods/") && !isLocalFile) {
+									url = "https://mods.r74n.com/" + url;
+								}
+								modManagerList.innerHTML += `<li><a href="${url.replaceAll('"','')}" target="_blank">${modName}</a> <span class="removeModX" onclick='removeMod("${mod.replaceAll('"','\\\"')}")'>X</span></li>`
 							}
-							modManagerList.innerHTML += `<li><a href="${url.replaceAll('"','')}" target="_blank">${modName}</a> <span class="removeModX" onclick='removeMod("${mod.replaceAll('"','\\\"')}")'>X</span></li>`
 						}
-					}
-					else {
-						document.getElementById("noMods").style.display = "block";
-					}
-				</script>
-				<span id="modManagerTagline">See the <a href="https://mods.r74n.com/mod-list" target="_blank">Mod List</a> or <a href="https://github.com/R74nCom/Sandboxels-Mods/" target="_blank">GitHub</a>.</span>
-				<a id="modManagerRefresh" style="padding-top:1em;display:none" href="#" onclick="location.reload();return false;">Reload to apply changes!</a>
+						else {
+							document.getElementById("noMods").style.display = "block";
+						}
+					</script>
+					<span id="modManagerTagline">See the <a href="https://mods.r74n.com/mod-list" target="_blank">Mod List</a> or <a href="https://github.com/R74nCom/Sandboxels-Mods/" target="_blank">GitHub</a>.</span>
+					<a id="modManagerRefresh" style="padding-top:1em;display:none" href="#" onclick="location.reload();return false;">Reload to apply changes!</a>
+				</div>
 				<input type="text" id="modManagerUrl" class="menuInput" placeholder=".JS or URL..." onkeydown="if (event.keyCode == 13) {addMod(this.value);this.value = '';};this.focus();" enterkeyhint="done"></input>
 			</div>
 			<!-- <button id="modManagerAdd" onclick="addMod(document.getElementById('modManagerUrl').value); document.getElementById('modManagerUrl').value = '';">+</button> -->
@@ -21772,7 +22797,7 @@ window.addEventListener("load", function() {
 			<div id="savePromptMenu" class="menuScreen">
 				<button class="XButton" onclick="closeMenu();"></button>
 				<div class="menuTitle">Save to Slot</div>
-				<div class="menuText" style="padding-top:1em">
+				<div class="menuText">
 					<span class="setting-span"><span id="saveNameLabel">Name</span> <input type="text" class="settingsInput" id="saveName" placeholder="Save Name..."></span>
 					<span id="saveWarning"></span>
 					<span class="setting-span"><span id="saveAuthorLabel">By</span> <input type="text" class="settingsInput" id="saveAuthor" placeholder="Your Name..."></span>
@@ -21840,8 +22865,8 @@ window.addEventListener("load", function() {
 						<div class="control-row"><span>Draw line</span><span><kbd>Shift</kbd> + <kbd>Click</kbd></span></div>
 						<div class="control-row"><span>Change cursor size</span><span><kbd>Scroll</kbd> or <kbd>+</kbd> <kbd>-</kbd> or <kbd>[</kbd> <kbd>]</kbd></span></div>
 						<div class="control-row"><span>Change category</span><span><kbd>←</kbd> <kbd>→</kbd></span></div>
-						<div class="control-row"><span>Select by name</span><span><kbd>E</kbd></span></div>
-						<div class="control-row"><span>Element info</span><span><kbd>I</kbd> or <kbd>/</kbd></span></div>
+						<!-- <div class="control-row"><span>Select by name</span><span><kbd>E</kbd></span></div> -->
+						<div class="control-row"><span>Search / Select by name</span><span><kbd>E</kbd> or <kbd>I</kbd> or <kbd>/</kbd></span></div>
 						<div class="control-row"><span>Open settings</span><span><kbd>\</kbd></span></div>
 						<div class="control-row"><span>Reset canvas</span><span><kbd>R</kbd></span></div>
 						<div class="control-row"><span>Single step</span><span><kbd>&gt;</kbd></span></div>
@@ -21865,11 +22890,13 @@ window.addEventListener("load", function() {
 						<div class="control-row"><span>Run a single frame of simulation</span><span><kbd>Step (&gt;)</kbd></span></div>
 						<div class="control-row"><span>Decrease the cursor size</span><span><kbd>Minus (-)</kbd></span></div>
 						<div class="control-row"><span>Increase the cursor size</span><span><kbd>Plus (+)</kbd></span></div>
+						<div class="control-row"><span>Restore the previous canvas state</span><span><kbd>Undo (Un)</kbd></span></div>
+						<div class="control-row"><span>Restore the undone canvas state</span><span><kbd>Redo (Re)</kbd></span></div>
 						<div class="control-row"><span>Clear the entire canvas</span><span><kbd>Reset</kbd></span></div>
 						<div class="control-row"><span>Override existing pixels when placing</span><span><kbd>Replace</kbd></span></div>
-						<div class="control-row"><span>Select any element by name</span><span><kbd>Elem</kbd></span></div>
+						<!-- <div class="control-row"><span>Select any element by name</span><span><kbd>Elem</kbd></span></div> -->
 						<div class="control-row"><span>Switch to Edit Mode</span><span><kbd>Edit</kbd></span></div>
-						<div class="control-row"><span>Open the element info screen</span><span><kbd>Info</kbd></span></div>
+						<div class="control-row"><span>Show element info or select by name</span><span><kbd>Search</kbd></span></div>
 						<div class="control-row"><span>Open the Save &amp; Load menu</span><span><kbd>Saves</kbd></span></div>
 						<div class="control-row"><span>Open the Mod Manager</span><span><kbd>Mods</kbd></span></div>
 						<div class="control-row"><span>Open the Settings Menu</span><span><kbd>Settings</kbd></span></div>
@@ -21910,10 +22937,13 @@ window.addEventListener("load", function() {
 							<option value="en_ca">English (Canadian)</option>
 							<option value="en_au">English (Australian)</option>
 							<option value="es">Español</option>
+							<option value="ca">Català</option>
 							<option value="cs">Čeština</option>
+							<option value="da">Dansk</option>
 							<option value="de">Deutsch</option>
 							<option value="et">eesti keel</option>
 							<option value="fi">Suomi</option>
+							<option value="fil">Filipino / Tagalog</option>
 							<option value="fr">Français</option>
 							<option value="hu">Magyar</option>
 							<option value="id">Bahasa Indonesia</option>
@@ -21934,11 +22964,14 @@ window.addEventListener("load", function() {
 							<optgroup label="Incomplete">
 								<option value="ar">اَلْعَرَبِيَّةُ</option>
 								<option value="he">עִברִית</option>
+								<option value="no">Norsk</option>
 								<option value="ja">日本語</option>
 								<option value="qvp">Viossa</option>
 								<option value="th">ภาษาไทย</option>
 								<option value="tok">Toki Pona</option>
 								<option value="uk">Українська Мова</option>
+								<option value="sq">shqip</option>
+								<option value="hsb">hornjoserbšćina</option>
 							</optgroup>
 						</select>
 					</span>
@@ -22036,6 +23069,7 @@ window.addEventListener("load", function() {
 						<span setting="invertscroll" class="setting-span multisetting" title="Brush scroll direction is inverted, useful on macOS. Default: OFF"><button id="settingLabel-invertscroll" class="toggleInput" onclick="toggleInput(this,'invertscroll',false)" state="0">Invert Scroll</button></span>
 						<span setting="precision" class="setting-span multisetting" title="Dot appears in the center of the brush. Default: OFF"><button id="settingLabel-precision" class="toggleInput" onclick="toggleInput(this,'precision',false)" state="0">Precision Dot</button></span>
 						<span setting="showticks" class="setting-span multisetting" title="Default: OFF"><button id="settingLabel-showticks" class="toggleInput" onclick="toggleInput(this,'showticks',false); initStats(); updateStats();" state="0">Tick Count</button></span>
+						<span setting="icons" class="setting-span multisetting" title="Default: ON"><button id="settingLabel-icons" class="toggleInput" onclick="toggleInput(this,'icons',false); checkButtonIcons();" state="1">UI Icons</button></span>
 						<span setting="limitless" class="setting-span multisetting" title="Default: OFF"><button id="settingLabel-limitless" class="toggleInput" onclick="toggleInput(this,'limitless',false); refreshMaxPixels(); checkMouseSize(true);" state="0">Limitless</button></span>
 					</div>
 					<div class="buttons-row">
@@ -22052,7 +23086,7 @@ window.addEventListener("load", function() {
 	<div class="footer">
 		<span class="footer-tag footer-title" onclick="showGameInfo();" role="button"><span id="gameInfo">?</span>Sandboxels</span> 
 		<a href="./changelog" class="footer-tag footer-version" target="_blank" onclick="showChangelog(); return false;">
-			v1.13.2
+			v1.15
 		</a>
 		<script>
 			let footerVersion = document.querySelector(".footer-version");
@@ -22123,6 +23157,7 @@ window.addEventListener("load", function() {
 				}
 				let e = document.getElementById(id);
 				if (e) {
+					if (e.classList.contains("icon")) continue;
 					if (!qual) {
 						if (e.getAttribute("type") === "button") e.value = lang[key];
 						if (e.hasAttribute("placeholder")) e.setAttribute("placeholder",lang[key]);
